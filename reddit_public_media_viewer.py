@@ -823,6 +823,64 @@ PAGE_TEMPLATE = """
       margin-top: 22px;
     }
 
+    .results-search {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: min(100%, 340px);
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(128, 154, 207, 0.18);
+      background: rgba(10, 16, 28, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .results-search-input {
+      width: min(100%, 220px);
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .results-search-input::placeholder {
+      color: rgba(198, 214, 244, 0.48);
+    }
+
+    .results-search-clear {
+      border: 0;
+      background: rgba(148, 242, 217, 0.1);
+      color: #dffdf6;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.18s ease, transform 0.18s ease;
+    }
+
+    .results-search-clear:hover {
+      background: rgba(148, 242, 217, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .results-filter-empty {
+      margin-top: 18px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     .tile {
       display: block;
       overflow: hidden;
@@ -1220,7 +1278,7 @@ PAGE_TEMPLATE = """
     {% endif %}
 
     {% if active_view == 'subreddit' and subreddit and posts is not none %}
-      <div class="card toolbar-card">
+      <div class="card toolbar-card browser-results-panel">
         <div class="toolbar">
           <div class="toolbar-left">
             <h2 style="font-size:1.35rem;">r/{{ subreddit }}</h2>
@@ -1234,7 +1292,12 @@ PAGE_TEMPLATE = """
             {% if subreddit_meta and subreddit_meta.get('over18') %}
               <span class="button-link muted">18+</span>
             {% endif %}
-            <span class="button-link muted">{{ media_count }} media item{% if media_count != 1 %}s{% endif %}</span>
+            <span class="button-link muted js-media-count" data-total-count="{{ media_count }}">{{ media_count }} media item{% if media_count != 1 %}s{% endif %}</span>
+            <div class="results-search" data-results-search>
+              <label class="sr-only" for="results-filter">Search current results</label>
+              <input id="results-filter" class="results-search-input" type="search" placeholder="Search this page" autocomplete="off" spellcheck="false">
+              <button type="button" class="results-search-clear is-hidden" data-clear-results-search>Clear</button>
+            </div>
           </div>
           <div class="toolbar-left">
             {% if next_after %}
@@ -1254,7 +1317,7 @@ PAGE_TEMPLATE = """
               {% for media in post['media_items'] %}
                 {% set download_url = media_download_url(media) %}
                 {% set download_filename = build_download_filename(post['title'], media) %}
-                <div class="tile">
+                <div class="tile" data-search-text="{{ (post['title'] ~ ' ' ~ post['author'] ~ ' ' ~ post['subreddit'] ~ ' ' ~ media['label'] ~ (' NSFW' if post['is_nsfw'] else ''))|lower|e }}">
                   <div class="media-shell">
                     {% if media['kind'] == 'image' %}
                       <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
@@ -1315,6 +1378,7 @@ PAGE_TEMPLATE = """
               {% endfor %}
             {% endfor %}
           </div>
+          <div class="notice results-filter-empty is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
         {% else %}
           <div class="notice">No supported media posts were found in this listing.</div>
         {% endif %}
@@ -1328,7 +1392,7 @@ PAGE_TEMPLATE = """
     {% endif %}
 
     {% if active_view == 'user' and username and posts is not none %}
-      <div class="card toolbar-card">
+      <div class="card toolbar-card browser-results-panel">
         <div class="toolbar">
           <div class="toolbar-left">
             <h2 style="font-size:1.35rem;">u/{{ username }}</h2>
@@ -1339,7 +1403,12 @@ PAGE_TEMPLATE = """
                 {{ current_sort_label }}
               {% endif %}
             </span>
-            <span class="button-link muted">{{ media_count }} media item{% if media_count != 1 %}s{% endif %}</span>
+            <span class="button-link muted js-media-count" data-total-count="{{ media_count }}">{{ media_count }} media item{% if media_count != 1 %}s{% endif %}</span>
+            <div class="results-search" data-results-search>
+              <label class="sr-only" for="results-filter">Search current results</label>
+              <input id="results-filter" class="results-search-input" type="search" placeholder="Search this page" autocomplete="off" spellcheck="false">
+              <button type="button" class="results-search-clear is-hidden" data-clear-results-search>Clear</button>
+            </div>
           </div>
           <div class="toolbar-left">
             {% if next_after %}
@@ -1365,7 +1434,7 @@ PAGE_TEMPLATE = """
               {% for media in post['media_items'] %}
                 {% set download_url = media_download_url(media) %}
                 {% set download_filename = build_download_filename(post['title'], media) %}
-                <div class="tile">
+                <div class="tile" data-search-text="{{ (post['title'] ~ ' ' ~ post['author'] ~ ' ' ~ post['subreddit'] ~ ' ' ~ media['label'] ~ (' NSFW' if post['is_nsfw'] else ''))|lower|e }}">
                   <div class="media-shell">
                     {% if media['kind'] == 'image' %}
                       <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
@@ -1426,6 +1495,7 @@ PAGE_TEMPLATE = """
               {% endfor %}
             {% endfor %}
           </div>
+          <div class="notice results-filter-empty is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
         {% else %}
           <div class="notice">No supported media posts were found for this user.</div>
         {% endif %}
@@ -1611,6 +1681,70 @@ PAGE_TEMPLATE = """
 
         highlightUsernameField();
       });
+
+      const resultsPanel = document.querySelector(".browser-results-panel");
+      const resultsSearch = resultsPanel ? resultsPanel.querySelector("[data-results-search]") : null;
+      const resultsSearchInput = resultsSearch ? resultsSearch.querySelector(".results-search-input") : null;
+      const resultsSearchClear = resultsSearch ? resultsSearch.querySelector("[data-clear-results-search]") : null;
+      const mediaCountBadge = resultsPanel ? resultsPanel.querySelector(".js-media-count") : null;
+      const filterEmptyNotice = resultsPanel ? resultsPanel.querySelector("[data-results-filter-empty]") : null;
+      const resultTiles = resultsPanel ? Array.from(resultsPanel.querySelectorAll(".tile[data-search-text]")) : [];
+
+      function updateMediaCountBadge(visibleCount, totalCount) {
+        if (!mediaCountBadge) return;
+
+        const hasActiveFilter = resultsSearchInput && resultsSearchInput.value.trim() !== "";
+        const itemLabel = totalCount === 1 ? "media item" : "media items";
+
+        if (hasActiveFilter) {
+          mediaCountBadge.textContent = `${visibleCount} of ${totalCount} ${itemLabel}`;
+        } else {
+          mediaCountBadge.textContent = `${totalCount} ${itemLabel}`;
+        }
+      }
+
+      function applyResultsFilter() {
+        if (!resultsSearchInput || !mediaCountBadge) return;
+
+        const needle = resultsSearchInput.value.trim().toLowerCase();
+        const totalCount = resultTiles.length;
+        let visibleCount = 0;
+
+        resultTiles.forEach((tile) => {
+          const haystack = (tile.dataset.searchText || "").toLowerCase();
+          const matches = !needle || haystack.includes(needle);
+
+          tile.style.display = matches ? "" : "none";
+
+          if (matches) {
+            visibleCount += 1;
+          }
+        });
+
+        if (resultsSearchClear) {
+          resultsSearchClear.classList.toggle("is-hidden", needle === "");
+        }
+
+        if (filterEmptyNotice) {
+          filterEmptyNotice.classList.toggle("is-hidden", !(needle && visibleCount === 0));
+        }
+
+        updateMediaCountBadge(visibleCount, totalCount);
+      }
+
+      if (resultsSearchInput) {
+        resultsSearchInput.addEventListener("input", applyResultsFilter);
+        resultsSearchInput.addEventListener("search", applyResultsFilter);
+        applyResultsFilter();
+      }
+
+      if (resultsSearchClear && resultsSearchInput) {
+        resultsSearchClear.addEventListener("click", () => {
+          resultsSearchInput.value = "";
+          applyResultsFilter();
+          resultsSearchInput.focus();
+        });
+      }
 
       document.addEventListener("click", (event) => {
         const video = event.target.closest('video.deferred-video[data-kind="gifv"]');
