@@ -817,6 +817,12 @@ PAGE_TEMPLATE = """
       margin-top: 18px;
     }
 
+    .pagination-footer {
+      display: flex;
+      justify-content: center;
+      margin-top: 22px;
+    }
+
     .tile {
       display: block;
       overflow: hidden;
@@ -1312,6 +1318,12 @@ PAGE_TEMPLATE = """
         {% else %}
           <div class="notice">No supported media posts were found in this listing.</div>
         {% endif %}
+
+        {% if next_after %}
+          <div class="pagination-footer">
+            <a class="button-link muted" href="/?subreddit={{ subreddit|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}">Next page</a>
+          </div>
+        {% endif %}
       </div>
     {% endif %}
 
@@ -1416,6 +1428,12 @@ PAGE_TEMPLATE = """
           </div>
         {% else %}
           <div class="notice">No supported media posts were found for this user.</div>
+        {% endif %}
+
+        {% if next_after %}
+          <div class="pagination-footer">
+            <a class="button-link muted" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}">Next page</a>
+          </div>
         {% endif %}
       </div>
     {% endif %}
