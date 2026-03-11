@@ -24,6 +24,7 @@ MAX_USER_RESULTS = 25
 DISPLAY_MEDIA_ITEMS_PER_PAGE = 100
 API_BATCH_SIZE = 100
 MAX_API_PAGES_PER_VIEW = 10
+MAX_API_PAGES_PER_SEARCH = 100
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 VIDEO_EXTENSIONS = (".mp4", ".webm", ".mov", ".m4v")
@@ -826,8 +827,9 @@ PAGE_TEMPLATE = """
     .results-search {
       display: inline-flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
-      min-width: min(100%, 340px);
+      min-width: min(100%, 430px);
       padding: 6px 8px;
       border-radius: 999px;
       border: 1px solid rgba(128, 154, 207, 0.18);
@@ -836,7 +838,7 @@ PAGE_TEMPLATE = """
     }
 
     .results-search-input {
-      width: min(100%, 220px);
+      width: min(100%, 240px);
       border: 0;
       outline: none;
       background: transparent;
@@ -848,6 +850,7 @@ PAGE_TEMPLATE = """
       color: rgba(198, 214, 244, 0.48);
     }
 
+    .results-search-button,
     .results-search-clear {
       border: 0;
       background: rgba(148, 242, 217, 0.1);
@@ -858,15 +861,30 @@ PAGE_TEMPLATE = """
       font-size: 0.9rem;
       cursor: pointer;
       transition: background 0.18s ease, transform 0.18s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
     }
 
+    .results-search-button {
+      background: rgba(138, 183, 255, 0.16);
+      color: #edf5ff;
+    }
+
+    .results-search-button:hover,
     .results-search-clear:hover {
       background: rgba(148, 242, 217, 0.18);
       transform: translateY(-1px);
     }
 
-    .results-filter-empty {
-      margin-top: 18px;
+    .results-search-button:hover {
+      background: rgba(138, 183, 255, 0.24);
+    }
+
+    .results-search-meta {
+      margin-top: 14px;
     }
 
     .sr-only {
@@ -1292,16 +1310,24 @@ PAGE_TEMPLATE = """
             {% if subreddit_meta and subreddit_meta.get('over18') %}
               <span class="button-link muted">18+</span>
             {% endif %}
-            <span class="button-link muted js-media-count" data-total-count="{{ media_count }}">{{ media_count }} media item{% if media_count != 1 %}s{% endif %}</span>
-            <div class="results-search" data-results-search>
-              <label class="sr-only" for="results-filter">Search current results</label>
-              <input id="results-filter" class="results-search-input" type="search" placeholder="Search this page" autocomplete="off" spellcheck="false">
-              <button type="button" class="results-search-clear is-hidden" data-clear-results-search>Clear</button>
-            </div>
+            <span class="button-link muted js-media-count">{{ media_count }} {% if results_query %}matching {% endif %}media item{% if media_count != 1 %}s{% endif %}</span>
+            <form class="results-search" method="get" action="/" data-results-search>
+              <input type="hidden" name="subreddit" value="{{ subreddit }}">
+              <input type="hidden" name="sort" value="{{ sort }}">
+              {% if sort == 'top' %}<input type="hidden" name="top_time" value="{{ top_time }}">{% endif %}
+              {% if over18 %}<input type="hidden" name="over18" value="1">{% endif %}
+              <input type="hidden" name="results_query" value="{{ results_query }}" data-results-search-submit>
+              <label class="sr-only" for="results-query-subreddit">Filter this page or run an extended subreddit search</label>
+              <input id="results-query-subreddit" class="results-search-input" type="search" value="{{ results_query }}" placeholder="Search this page" autocomplete="off" spellcheck="false" data-results-search-input>
+              <button type="submit" class="results-search-button">Extended search</button>
+              {% if results_query %}
+                <a class="results-search-clear" href="/?subreddit={{ subreddit|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}{% if over18 %}&over18=1{% endif %}">Clear extended</a>
+              {% endif %}
+            </form>
           </div>
           <div class="toolbar-left">
             {% if next_after %}
-              <a class="button-link muted" href="/?subreddit={{ subreddit|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}">Next page</a>
+              <a class="button-link muted" href="/?subreddit={{ subreddit|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}{% if results_query %}&results_query={{ results_query|urlencode }}{% endif %}">Next page</a>
             {% endif %}
             <a class="button-link muted" target="_blank" rel="noopener noreferrer" href="https://www.reddit.com/r/{{ subreddit|urlencode }}/{{ api_sort }}/{% if sort == 'top' %}?t={{ top_time|urlencode }}{% endif %}">Open on Reddit</a>
           </div>
@@ -1311,13 +1337,21 @@ PAGE_TEMPLATE = """
           <p class="muted-line">{{ subreddit_meta.get('public_description') }}</p>
         {% endif %}
 
+        {% if results_query %}
+          <p class="muted-line results-search-meta">Showing extended-search matches for “{{ results_query }}” across r/{{ subreddit }} · scanned {{ search_pages_fetched }} API page{% if search_pages_fetched != 1 %}s{% endif %}</p>
+        {% endif %}
+
+        {% if search_limit_hit %}
+          <div class="notice">Search stopped after scanning {{ search_pages_fetched }} API pages. Narrow the search if you need deeper results.</div>
+        {% endif %}
+
         {% if posts %}
           <div class="gallery">
             {% for post in posts %}
               {% for media in post['media_items'] %}
                 {% set download_url = media_download_url(media) %}
                 {% set download_filename = build_download_filename(post['title'], media) %}
-                <div class="tile" data-search-text="{{ (post['title'] ~ ' ' ~ post['author'] ~ ' ' ~ post['subreddit'] ~ ' ' ~ media['label'] ~ (' NSFW' if post['is_nsfw'] else ''))|lower|e }}">
+                <div class="tile" data-search-text="{{ media.get('search_text', '')|e }}">
                   <div class="media-shell">
                     {% if media['kind'] == 'image' %}
                       <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
@@ -1378,14 +1412,14 @@ PAGE_TEMPLATE = """
               {% endfor %}
             {% endfor %}
           </div>
-          <div class="notice results-filter-empty is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
+          <div class="notice is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
         {% else %}
-          <div class="notice">No supported media posts were found in this listing.</div>
+          {% if results_query %}<div class="notice">No matching media posts were found in r/{{ subreddit }} for “{{ results_query }}”.</div>{% else %}<div class="notice">No supported media posts were found in this listing.</div>{% endif %}
         {% endif %}
 
         {% if next_after %}
           <div class="pagination-footer">
-            <a class="button-link muted" href="/?subreddit={{ subreddit|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}">Next page</a>
+            <a class="button-link muted" href="/?subreddit={{ subreddit|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}{% if results_query %}&results_query={{ results_query|urlencode }}{% endif %}">Next page</a>
           </div>
         {% endif %}
       </div>
@@ -1403,16 +1437,24 @@ PAGE_TEMPLATE = """
                 {{ current_sort_label }}
               {% endif %}
             </span>
-            <span class="button-link muted js-media-count" data-total-count="{{ media_count }}">{{ media_count }} media item{% if media_count != 1 %}s{% endif %}</span>
-            <div class="results-search" data-results-search>
-              <label class="sr-only" for="results-filter">Search current results</label>
-              <input id="results-filter" class="results-search-input" type="search" placeholder="Search this page" autocomplete="off" spellcheck="false">
-              <button type="button" class="results-search-clear is-hidden" data-clear-results-search>Clear</button>
-            </div>
+            <span class="button-link muted js-media-count">{{ media_count }} {% if results_query %}matching {% endif %}media item{% if media_count != 1 %}s{% endif %}</span>
+            <form class="results-search" method="get" action="/" data-results-search>
+              <input type="hidden" name="username" value="{{ username }}">
+              <input type="hidden" name="sort" value="{{ sort }}">
+              {% if sort == 'top' %}<input type="hidden" name="top_time" value="{{ top_time }}">{% endif %}
+              {% if over18 %}<input type="hidden" name="over18" value="1">{% endif %}
+              <input type="hidden" name="results_query" value="{{ results_query }}" data-results-search-submit>
+              <label class="sr-only" for="results-query-user">Filter this page or run an extended user search</label>
+              <input id="results-query-user" class="results-search-input" type="search" value="{{ results_query }}" placeholder="Search this page" autocomplete="off" spellcheck="false" data-results-search-input>
+              <button type="submit" class="results-search-button">Extended search</button>
+              {% if results_query %}
+                <a class="results-search-clear" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}{% if over18 %}&over18=1{% endif %}">Clear extended</a>
+              {% endif %}
+            </form>
           </div>
           <div class="toolbar-left">
             {% if next_after %}
-              <a class="button-link muted" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}">Next page</a>
+              <a class="button-link muted" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}{% if results_query %}&results_query={{ results_query|urlencode }}{% endif %}">Next page</a>
             {% endif %}
             <a class="button-link muted" target="_blank" rel="noopener noreferrer" href="https://www.reddit.com/user/{{ username|urlencode }}/submitted/">Open on Reddit</a>
           </div>
@@ -1428,13 +1470,21 @@ PAGE_TEMPLATE = """
           </p>
         {% endif %}
 
+        {% if results_query %}
+          <p class="muted-line results-search-meta">Showing extended-search matches for “{{ results_query }}” across u/{{ username }} · scanned {{ search_pages_fetched }} API page{% if search_pages_fetched != 1 %}s{% endif %}</p>
+        {% endif %}
+
+        {% if search_limit_hit %}
+          <div class="notice">Search stopped after scanning {{ search_pages_fetched }} API pages. Narrow the search if you need deeper results.</div>
+        {% endif %}
+
         {% if posts %}
           <div class="gallery">
             {% for post in posts %}
               {% for media in post['media_items'] %}
                 {% set download_url = media_download_url(media) %}
                 {% set download_filename = build_download_filename(post['title'], media) %}
-                <div class="tile" data-search-text="{{ (post['title'] ~ ' ' ~ post['author'] ~ ' ' ~ post['subreddit'] ~ ' ' ~ media['label'] ~ (' NSFW' if post['is_nsfw'] else ''))|lower|e }}">
+                <div class="tile" data-search-text="{{ media.get('search_text', '')|e }}">
                   <div class="media-shell">
                     {% if media['kind'] == 'image' %}
                       <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
@@ -1495,14 +1545,14 @@ PAGE_TEMPLATE = """
               {% endfor %}
             {% endfor %}
           </div>
-          <div class="notice results-filter-empty is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
+          <div class="notice is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
         {% else %}
-          <div class="notice">No supported media posts were found for this user.</div>
+          {% if results_query %}<div class="notice">No matching media posts were found for u/{{ username }} for “{{ results_query }}”.</div>{% else %}<div class="notice">No supported media posts were found for this user.</div>{% endif %}
         {% endif %}
 
         {% if next_after %}
           <div class="pagination-footer">
-            <a class="button-link muted" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}">Next page</a>
+            <a class="button-link muted" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}{% if results_query %}&results_query={{ results_query|urlencode }}{% endif %}">Next page</a>
           </div>
         {% endif %}
       </div>
@@ -1684,8 +1734,8 @@ PAGE_TEMPLATE = """
 
       const resultsPanel = document.querySelector(".browser-results-panel");
       const resultsSearch = resultsPanel ? resultsPanel.querySelector("[data-results-search]") : null;
-      const resultsSearchInput = resultsSearch ? resultsSearch.querySelector(".results-search-input") : null;
-      const resultsSearchClear = resultsSearch ? resultsSearch.querySelector("[data-clear-results-search]") : null;
+      const resultsSearchInput = resultsSearch ? resultsSearch.querySelector("[data-results-search-input]") : null;
+      const resultsSearchSubmitField = resultsSearch ? resultsSearch.querySelector("[data-results-search-submit]") : null;
       const mediaCountBadge = resultsPanel ? resultsPanel.querySelector(".js-media-count") : null;
       const filterEmptyNotice = resultsPanel ? resultsPanel.querySelector("[data-results-filter-empty]") : null;
       const resultTiles = resultsPanel ? Array.from(resultsPanel.querySelectorAll(".tile[data-search-text]")) : [];
@@ -1721,10 +1771,6 @@ PAGE_TEMPLATE = """
           }
         });
 
-        if (resultsSearchClear) {
-          resultsSearchClear.classList.toggle("is-hidden", needle === "");
-        }
-
         if (filterEmptyNotice) {
           filterEmptyNotice.classList.toggle("is-hidden", !(needle && visibleCount === 0));
         }
@@ -1735,14 +1781,13 @@ PAGE_TEMPLATE = """
       if (resultsSearchInput) {
         resultsSearchInput.addEventListener("input", applyResultsFilter);
         resultsSearchInput.addEventListener("search", applyResultsFilter);
-        applyResultsFilter();
       }
 
-      if (resultsSearchClear && resultsSearchInput) {
-        resultsSearchClear.addEventListener("click", () => {
-          resultsSearchInput.value = "";
-          applyResultsFilter();
-          resultsSearchInput.focus();
+      if (resultsSearch) {
+        resultsSearch.addEventListener("submit", () => {
+          if (resultsSearchSubmitField) {
+            resultsSearchSubmitField.value = resultsSearchInput ? resultsSearchInput.value.trim() : "";
+          }
         });
       }
 
@@ -1905,6 +1950,56 @@ class RedditClient:
             return data.get("data", {})
         except Exception:
             return None
+
+    def search_subreddit_posts(
+        self,
+        subreddit: str,
+        query: str,
+        after: str | None = None,
+        limit: int = API_BATCH_SIZE,
+        sort: str = "relevance",
+        top_time: str = "all",
+    ) -> dict[str, Any]:
+        sort = sort if sort in {"relevance", "hot", "top", "new", "comments"} else "relevance"
+        params = {
+            "q": query,
+            "restrict_sr": "on",
+            "type": "link",
+            "limit": max(1, min(limit, 100)),
+            "raw_json": 1,
+            "sort": sort,
+            "include_over_18": "on" if self.over18 else "off",
+        }
+        if after:
+            params["after"] = after
+        if sort == "top":
+            params["t"] = top_time if top_time in {"hour", "day", "week", "month", "year", "all"} else "all"
+        return self._get(f"https://www.reddit.com/r/{quote(subreddit)}/search.json", params=params)
+
+    def search_user_posts(
+        self,
+        username: str,
+        query: str,
+        after: str | None = None,
+        limit: int = API_BATCH_SIZE,
+        sort: str = "relevance",
+        top_time: str = "all",
+    ) -> dict[str, Any]:
+        sort = sort if sort in {"relevance", "hot", "top", "new", "comments"} else "relevance"
+        author_query = f'author:"{username}" {query}'.strip()
+        params = {
+            "q": author_query,
+            "type": "link",
+            "limit": max(1, min(limit, 100)),
+            "raw_json": 1,
+            "sort": sort,
+            "include_over_18": "on" if self.over18 else "off",
+        }
+        if after:
+            params["after"] = after
+        if sort == "top":
+            params["t"] = top_time if top_time in {"hour", "day", "week", "month", "year", "all"} else "all"
+        return self._get("https://www.reddit.com/search.json", params=params)
 
 
 def normalise_url(url: str) -> str:
@@ -2259,20 +2354,59 @@ def extract_media(post: dict[str, Any]) -> list[dict[str, Any]]:
     return media_items
 
 
+def normalise_search_query(value: str) -> str:
+    return re.sub(r"\s+", " ", (value or "").strip()).lower()
+
+
+def ui_sort_to_search_sort(sort: str) -> str:
+    mapping = {
+        "best": "relevance",
+        "hot": "hot",
+        "rising": "hot",
+        "new": "new",
+        "top": "top",
+    }
+    return mapping.get((sort or "").lower(), "relevance")
+
+
+def build_media_search_text(post: dict[str, Any], media: dict[str, Any]) -> str:
+    author = str(post.get("author") or "unknown")
+    subreddit = str(post.get("subreddit") or "unknown")
+    parts = [
+        post.get("title") or "",
+        post.get("selftext") or "",
+        author,
+        f"u/{author}",
+        subreddit,
+        f"r/{subreddit}",
+        post.get("link_flair_text") or "",
+        post.get("domain") or "",
+        post.get("url") or "",
+        post.get("url_overridden_by_dest") or "",
+        media.get("label") or "",
+        media.get("kind") or "",
+    ]
+    if post.get("over_18"):
+        parts.append("nsfw")
+    return normalise_search_query(" ".join(str(part) for part in parts if part))
+
+
 def collect_unique_posts(
     fetch_page,
     *,
     initial_after: str | None = None,
     target_media_items: int = DISPLAY_MEDIA_ITEMS_PER_PAGE,
-) -> tuple[list[dict[str, Any]], str | None, int]:
+    max_api_pages: int = MAX_API_PAGES_PER_VIEW,
+) -> tuple[list[dict[str, Any]], str | None, int, int, bool]:
     posts: list[dict[str, Any]] = []
     seen_media: set[tuple[str, str]] = set()
     after_token = initial_after
     pages_fetched = 0
     next_after: str | None = None
     media_count = 0
+    search_limit_hit = False
 
-    while media_count < target_media_items and pages_fetched < MAX_API_PAGES_PER_VIEW:
+    while media_count < target_media_items and pages_fetched < max_api_pages:
         listing = fetch_page(after=after_token, limit=API_BATCH_SIZE)
         pages_fetched += 1
 
@@ -2301,8 +2435,11 @@ def collect_unique_posts(
                 if identity in seen_media:
                     continue
 
+                media_with_search = dict(media)
+                media_with_search["search_text"] = build_media_search_text(raw, media)
+
                 seen_media.add(identity)
-                unique_media_items.append(media)
+                unique_media_items.append(media_with_search)
                 media_count += 1
 
                 if media_count >= target_media_items:
@@ -2334,8 +2471,11 @@ def collect_unique_posts(
 
         after_token = api_after
         next_after = api_after
+    else:
+        if pages_fetched >= max_api_pages and media_count < target_media_items:
+            search_limit_hit = True
 
-    return posts, next_after, media_count
+    return posts, next_after, media_count, pages_fetched, search_limit_hit
 
 
 @app.route("/download")
@@ -2421,6 +2561,7 @@ def index():
     sort = (request.args.get("sort") or "best").strip().lower()
     top_time = (request.args.get("top_time") or "all").strip().lower()
     after = (request.args.get("after") or "").strip() or None
+    results_query = (request.args.get("results_query") or "").strip()
     over18 = request.args.get("over18") == "1"
 
     if top_time not in {"hour", "day", "week", "month", "year", "all"}:
@@ -2441,6 +2582,8 @@ def index():
     error: str | None = None
     active_view: str | None = None
     media_count = 0
+    search_pages_fetched = 0
+    search_limit_hit = False
 
     if username:
         active_view = "user"
@@ -2458,6 +2601,8 @@ def index():
     current_sort_label = sort_label_map.get(sort, sort.capitalize())
     top_time_label_map = dict(TOP_TIME_OPTIONS)
     top_time_label = top_time_label_map.get(top_time, "All time")
+    max_api_pages = MAX_API_PAGES_PER_SEARCH if results_query else MAX_API_PAGES_PER_VIEW
+    search_sort = ui_sort_to_search_sort(sort)
 
     try:
         if query:
@@ -2466,30 +2611,58 @@ def index():
             user_results = client.search_users(user_query)
 
         if active_view == "subreddit" and subreddit:
-            posts, next_after, media_count = collect_unique_posts(
-                lambda after=None, limit=API_BATCH_SIZE: client.load_subreddit(
+            fetch_page = None
+            if results_query:
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.search_subreddit_posts(
+                    subreddit,
+                    query=results_query,
+                    after=after,
+                    limit=limit,
+                    sort=search_sort,
+                    top_time=top_time,
+                )
+            else:
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.load_subreddit(
                     subreddit,
                     sort=api_sort,
                     after=after,
                     limit=limit,
                     top_time=top_time,
-                ),
+                )
+
+            posts, next_after, media_count, search_pages_fetched, search_limit_hit = collect_unique_posts(
+                fetch_page,
                 initial_after=after,
                 target_media_items=DISPLAY_MEDIA_ITEMS_PER_PAGE,
+                max_api_pages=max_api_pages,
             )
             subreddit_meta = client.load_subreddit_about(subreddit)
 
         if active_view == "user" and username:
-            posts, next_after, media_count = collect_unique_posts(
-                lambda after=None, limit=API_BATCH_SIZE: client.load_user_submitted(
+            fetch_page = None
+            if results_query:
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.search_user_posts(
+                    username,
+                    query=results_query,
+                    after=after,
+                    limit=limit,
+                    sort=search_sort,
+                    top_time=top_time,
+                )
+            else:
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.load_user_submitted(
                     username,
                     sort=api_sort,
                     after=after,
                     limit=limit,
                     top_time=top_time,
-                ),
+                )
+
+            posts, next_after, media_count, search_pages_fetched, search_limit_hit = collect_unique_posts(
+                fetch_page,
                 initial_after=after,
                 target_media_items=DISPLAY_MEDIA_ITEMS_PER_PAGE,
+                max_api_pages=max_api_pages,
             )
             user_meta = client.load_user_about(username)
     except Exception as exc:
@@ -2510,6 +2683,7 @@ def index():
         top_time_label=top_time_label,
         current_sort_label=current_sort_label,
         over18=over18,
+        results_query=results_query,
         search_results=search_results,
         user_results=user_results,
         posts=posts,
@@ -2517,6 +2691,8 @@ def index():
         subreddit_meta=subreddit_meta,
         user_meta=user_meta,
         media_count=media_count,
+        search_pages_fetched=search_pages_fetched,
+        search_limit_hit=search_limit_hit,
         active_view=active_view,
         error=error,
         media_download_url=media_download_url,
