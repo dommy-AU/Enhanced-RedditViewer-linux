@@ -1,28 +1,35 @@
 # Reddit Public Media Viewer for Linux Mint
 
-A local Flask-based Reddit media browser for Linux Mint which focuses on **public media only**. It lets you:
+A local Flask-based Reddit media browser for Linux Mint that focuses on **public Reddit media only**. It lets you:
 
 - search **subreddits**
 - search **users**
 - open an exact subreddit or user feed
-- browse **images, GIF-style clips and videos**
+- browse **images, GIF-style clips and videos** in a media-first layout
+- group **multi-media Reddit posts into a single post card** instead of splitting every file into separate posts
+- move through multi-media posts with **previous / next controls** and a **media count indicator**
 - choose sort modes including **Best, New, Rising, Top and Hot**
 - use **Top** time filters: **Now, Today, This week, This month, This year and All time**
 - request mature content with the **over 18** toggle when Reddit still allows guest access
-- display **up to 100 unique media items per page**
+- display **up to 200 unique media items per page**
+- use an instant **page search** to filter the currently visible results
+- use **Extended search** to search deeper across the current subreddit or user feed
+- use **Next page** from the top or bottom of the results view
 - download supported media to your PC
 - download Reddit-hosted videos with sound when `ffmpeg` is available
 - use the **View user** button to copy a creator’s username into the **Exact user** field
+- open the current subreddit or user directly on Reddit
 - show a custom samurai icon on the main page from the `static` folder
 
-The included launcher script automatically creates a Python virtual environment, installs the required packages, checks for `ffmpeg`, starts the app, and opens the viewer in your browser.
+The setup launcher creates a Python virtual environment, installs the required packages, checks for `ffmpeg`, starts the app and opens the viewer in your browser. A lighter launcher can also reopen the app later once the virtual environment already exists.
 
 ---
 
 ## Files and folders in this project
 
 - `reddit_public_media_viewer.py` — the main Flask application
-- `runmefirst.sh` — Linux Mint launcher script
+- `runmefirst.sh` — first-run setup and launcher script
+- `launch_app.sh` — quick launcher for later use after setup is complete
 - `requirements-reddit-public-media-viewer.txt` — Python dependencies
 - `static/` — folder for static assets used by the app
 - `static/Icon.png` — the samurai image shown on the main page
@@ -33,6 +40,7 @@ Recommended folder layout:
 reddit-viewer/
 ├── reddit_public_media_viewer.py
 ├── runmefirst.sh
+├── launch_app.sh
 ├── requirements-reddit-public-media-viewer.txt
 └── static/
     └── Icon.png
@@ -65,19 +73,20 @@ Python packages used by the app:
 
    - `reddit_public_media_viewer.py`
    - `runmefirst.sh`
+   - `launch_app.sh`
    - `requirements-reddit-public-media-viewer.txt`
    - `static/`
    - `static/Icon.png`
 
 2. Open a terminal in that folder.
 
-3. Make the launcher executable:
+3. Make the launchers executable:
 
 ```bash
-chmod +x runmefirst.sh
+chmod +x runmefirst.sh launch_app.sh
 ```
 
-4. Run it:
+4. Run the setup launcher:
 
 ```bash
 ./runmefirst.sh
@@ -93,9 +102,21 @@ If the browser does not open, paste that address into your browser manually.
 
 ---
 
+## Quick relaunch after setup
+
+Once `.venv` already exists, you can reopen the app faster with:
+
+```bash
+./launch_app.sh
+```
+
+This launcher checks the health endpoint, starts the app if needed and then opens the viewer in your browser.
+
+---
+
 ## Manual start
 
-If you would rather start it manually instead of using the launcher:
+If you would rather start it manually instead of using the launchers:
 
 ```bash
 python3 -m venv .venv
@@ -156,17 +177,39 @@ When **Top** is selected, an extra dropdown appears for:
 ### Mature content toggle
 Tick the mature content checkbox if you want the app to request 18+ content. This does **not** bypass Reddit restrictions. It only helps where Reddit still permits guest access to mature content.
 
+### Page search and Extended search
+Inside an open subreddit or user feed:
+
+- type in the search field to **filter the current page instantly**
+- click **Extended search** to search deeper across the current subreddit or user feed
+- use **Clear extended** to return to normal browsing
+
+Extended search is broader than the on-page filter and can scan multiple Reddit API pages. If the scan limit is reached, the app shows a notice so you know the search was cut short rather than silently failing.
+
+### Grouped multi-media posts
+If a Reddit post contains more than one media file, the viewer keeps it together as **one post card**.
+
+That makes it easier to browse galleries and multi-file posts without seeing the same Reddit post repeated several times.
+
+### Pagination
+The app can display **up to 200 unique media items per page**.
+
+If more results are available, use the **Next page** button at the top or bottom of the results view.
+
 ### Download media
-Each media tile can include a **Download** button.
+Each post card can include a **Download** button.
 
 - images download directly
 - standard videos download directly
 - Reddit-hosted DASH videos can be merged with audio during download if `ffmpeg` is installed
 
 ### View user button
-Each media tile can include a **View user** button.
+Each post card can include a **View user** button.
 
 When clicked, it places that creator’s username into the **Exact user** field so you can open their profile feed quickly.
+
+### Open on Reddit
+Each open subreddit or user view also includes an **Open on Reddit** button so you can jump to the original Reddit page in your browser.
 
 ### Main page image
 The main page uses:
@@ -184,14 +227,17 @@ If that file is missing, renamed or placed in the wrong folder, the samurai imag
 - clean media-first layout
 - no comments section
 - subreddit and user search
+- exact subreddit and exact user browsing
+- on-page results filtering
+- broader Extended search inside the current subreddit or user feed
+- grouped handling for multi-media Reddit posts
 - unique media filtering to reduce duplicates
 - supports direct images, preview images, Reddit-hosted videos and GIF-style clips
-- videos and GIF-style clips are **lazy-loaded** to keep the page more responsive
-- pauses off-screen looping clips to reduce load
-- tries to collect up to **100 unique media items per page**
+- videos and GIF-style clips are lazy-loaded to keep the page more responsive
 - supports direct file downloads
 - supports Reddit video downloads with audio when `ffmpeg` is installed
 - includes a custom hero image from the `static` folder
+- exposes a simple local health endpoint
 
 ---
 
@@ -258,6 +304,16 @@ Stop the existing process or edit the port inside `reddit_public_media_viewer.py
 ### Rate limited by Reddit
 Wait a little and try again.
 
+### Extended search finds fewer results than Reddit’s website
+That can happen because this app uses guest-accessible Reddit endpoints, search limits and media-only filtering.
+
+Try:
+
+- narrowing the search term
+- changing the sort mode
+- using a different Top time range if relevant
+- going to the next page of results
+
 ### Some content does not load
 That usually means one of these:
 
@@ -322,6 +378,12 @@ python3 -m pip install -r requirements-reddit-public-media-viewer.txt
 ffmpeg -version
 ```
 
+### Check that the app is running
+
+```bash
+curl -fsS http://127.0.0.1:65010/healthz
+```
+
 ---
 
 ## Health check
@@ -350,6 +412,5 @@ If you later want, this README can also be expanded with:
 
 - screenshots
 - packaging instructions
-- Android version notes
 - known issues
 - changelog
