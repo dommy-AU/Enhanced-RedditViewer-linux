@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 import os
 import re
 import shutil
@@ -1491,6 +1492,7 @@ PAGE_TEMPLATE = """
                     {% if first_download_url %}
                       <a class="tile-action-button" data-download-button href="/download?url={{ first_download_url|urlencode }}&filename={{ first_download_filename|urlencode }}{% if first_media.get('dash_url') %}&dash_url={{ first_media['dash_url']|urlencode }}{% endif %}">Download</a>
                     {% endif %}
+                    <button type="button" class="tile-action-button secondary" data-expand-button>Expand</button>
                     <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                   </div>
                 </div>
@@ -1640,6 +1642,7 @@ PAGE_TEMPLATE = """
                     {% if first_download_url %}
                       <a class="tile-action-button" data-download-button href="/download?url={{ first_download_url|urlencode }}&filename={{ first_download_filename|urlencode }}{% if first_media.get('dash_url') %}&dash_url={{ first_media['dash_url']|urlencode }}{% endif %}">Download</a>
                     {% endif %}
+                    <button type="button" class="tile-action-button secondary" data-expand-button>Expand</button>
                     <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                   </div>
                 </div>
@@ -1916,6 +1919,53 @@ PAGE_TEMPLATE = """
 
         highlightUsernameField();
       });
+
+      document.addEventListener("click", (event) => {
+        const expandButton = event.target.closest("[data-expand-button]");
+        if (!expandButton) return;
+
+        const tile = expandButton.closest("[data-media-carousel]");
+        const activeSlide = tile ? tile.querySelector(".media-slide.is-active") : null;
+        if (!activeSlide) return;
+
+        const imageLink = activeSlide.querySelector('a[href]');
+        if (imageLink && imageLink.href) {
+          window.open(imageLink.href, "_blank", "noopener,noreferrer");
+          return;
+        }
+
+        const video = activeSlide.querySelector("video.deferred-video");
+        if (!video) return;
+
+        if (video.dataset.kind === "gifv") {
+          pauseOtherGifv(video);
+        }
+        loadDeferredVideo(video, true);
+
+        const requestFullscreen =
+          video.requestFullscreen
+          || video.webkitRequestFullscreen
+          || video.msRequestFullscreen;
+
+        if (requestFullscreen) {
+          try {
+            requestFullscreen.call(video);
+            return;
+          } catch (_) {}
+        }
+
+        const fallbackUrl =
+          video.dataset.dashUrl
+          || video.dataset.hlsUrl
+          || video.dataset.mp4Url
+          || video.dataset.webmUrl
+          || "";
+
+        if (fallbackUrl) {
+          window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+        }
+      });
+
 
       const resultsPanel = document.querySelector(".browser-results-panel");
       const resultsSearch = resultsPanel ? resultsPanel.querySelector("[data-results-search]") : null;
@@ -2252,12 +2302,104 @@ def build_temp_file_response(
     return response
 
 
+def select_best_dash_stream_maps(dash_url: str, ffprobe_bin: str | None) -> tuple[str, str]:
+    video_map = "0:v:0"
+    audio_map = "0:a:0?"
+
+    if not ffprobe_bin:
+        return video_map, audio_map
+
+    command = [
+        ffprobe_bin,
+        "-v",
+        "error",
+        "-user_agent",
+        USER_AGENT,
+        "-show_entries",
+        "stream=index,codec_type,bit_rate,width,height",
+        "-of",
+        "json",
+        dash_url,
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
+        )
+        payload = json.loads(result.stdout or "{}")
+        streams = payload.get("streams") or []
+    except Exception:
+        return video_map, audio_map
+
+    best_video: dict[str, Any] | None = None
+    best_audio: dict[str, Any] | None = None
+
+    def parse_int(value: Any) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    for stream in streams:
+        codec_type = stream.get("codec_type")
+        if codec_type == "video":
+            candidate = {
+                "index": parse_int(stream.get("index")),
+                "bit_rate": parse_int(stream.get("bit_rate")),
+                "width": parse_int(stream.get("width")),
+                "height": parse_int(stream.get("height")),
+            }
+            candidate_score = (
+                candidate["width"] * candidate["height"],
+                candidate["bit_rate"],
+                candidate["width"],
+                candidate["height"],
+                -candidate["index"],
+            )
+            best_score = None
+            if best_video is not None:
+                best_score = (
+                    best_video["width"] * best_video["height"],
+                    best_video["bit_rate"],
+                    best_video["width"],
+                    best_video["height"],
+                    -best_video["index"],
+                )
+            if best_score is None or candidate_score > best_score:
+                best_video = candidate
+        elif codec_type == "audio":
+            candidate = {
+                "index": parse_int(stream.get("index")),
+                "bit_rate": parse_int(stream.get("bit_rate")),
+            }
+            candidate_score = (candidate["bit_rate"], -candidate["index"])
+            best_score = None
+            if best_audio is not None:
+                best_score = (best_audio["bit_rate"], -best_audio["index"])
+            if best_score is None or candidate_score > best_score:
+                best_audio = candidate
+
+    if best_video is not None:
+        video_map = f'0:{best_video["index"]}'
+    if best_audio is not None:
+        audio_map = f'0:{best_audio["index"]}?'
+
+    return video_map, audio_map
+
+
 def build_muxed_reddit_video_download(dash_url: str, filename: str) -> tuple[str, str, str]:
     ffmpeg_bin = shutil.which("ffmpeg")
     if not ffmpeg_bin:
         raise RuntimeError(
             "ffmpeg is required to download Reddit videos with sound. Install it with: sudo apt install ffmpeg"
         )
+
+    ffprobe_bin = shutil.which("ffprobe")
+    video_map, audio_map = select_best_dash_stream_maps(dash_url, ffprobe_bin)
 
     temp_dir = tempfile.mkdtemp(prefix="reddit_media_")
     output_filename = ensure_mp4_filename(filename)
@@ -2273,9 +2415,9 @@ def build_muxed_reddit_video_download(dash_url: str, filename: str) -> tuple[str
         "-i",
         dash_url,
         "-map",
-        "0:v:0",
+        video_map,
         "-map",
-        "0:a:0?",
+        audio_map,
         "-c",
         "copy",
         output_path,
