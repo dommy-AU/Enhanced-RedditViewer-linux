@@ -21,7 +21,7 @@ REQUEST_TIMEOUT = 20
 MAX_SUBREDDIT_RESULTS = 25
 MAX_USER_RESULTS = 25
 
-DISPLAY_MEDIA_ITEMS_PER_PAGE = 100
+DISPLAY_MEDIA_ITEMS_PER_PAGE = 200
 API_BATCH_SIZE = 100
 MAX_API_PAGES_PER_VIEW = 10
 MAX_API_PAGES_PER_SEARCH = 100
@@ -818,87 +818,6 @@ PAGE_TEMPLATE = """
       margin-top: 18px;
     }
 
-    .pagination-footer {
-      display: flex;
-      justify-content: center;
-      margin-top: 22px;
-    }
-
-    .results-search {
-      display: inline-flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      min-width: min(100%, 430px);
-      padding: 6px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(128, 154, 207, 0.18);
-      background: rgba(10, 16, 28, 0.72);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-    }
-
-    .results-search-input {
-      width: min(100%, 240px);
-      border: 0;
-      outline: none;
-      background: transparent;
-      color: var(--text);
-      font: inherit;
-    }
-
-    .results-search-input::placeholder {
-      color: rgba(198, 214, 244, 0.48);
-    }
-
-    .results-search-button,
-    .results-search-clear {
-      border: 0;
-      background: rgba(148, 242, 217, 0.1);
-      color: #dffdf6;
-      border-radius: 999px;
-      padding: 6px 10px;
-      font: inherit;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background 0.18s ease, transform 0.18s ease;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-    }
-
-    .results-search-button {
-      background: rgba(138, 183, 255, 0.16);
-      color: #edf5ff;
-    }
-
-    .results-search-button:hover,
-    .results-search-clear:hover {
-      background: rgba(148, 242, 217, 0.18);
-      transform: translateY(-1px);
-    }
-
-    .results-search-button:hover {
-      background: rgba(138, 183, 255, 0.24);
-    }
-
-    .results-search-meta {
-      margin-top: 14px;
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
     .tile {
       display: block;
       overflow: hidden;
@@ -987,6 +906,74 @@ PAGE_TEMPLATE = """
       cursor: pointer;
     }
 
+    .media-carousel {
+      position: relative;
+    }
+
+    .media-slide {
+      display: none;
+    }
+
+    .media-slide.is-active {
+      display: block;
+    }
+
+    .media-count-badge {
+      position: absolute;
+      top: 12px;
+      right: 36px;
+      z-index: 3;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(5, 9, 20, 0.72);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 700;
+      backdrop-filter: blur(6px);
+    }
+
+    .media-carousel-nav {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .media-nav-button,
+    .media-nav-status {
+      pointer-events: auto;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8, 14, 26, 0.9);
+      color: var(--text);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+      backdrop-filter: blur(6px);
+    }
+
+    .media-nav-button {
+      min-width: 42px;
+      min-height: 42px;
+      padding: 0 14px;
+      font-size: 1.2rem;
+      line-height: 1;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .media-nav-status {
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
     .media-shell.is-loaded .media-load-btn {
       opacity: 0;
       pointer-events: none;
@@ -1030,6 +1017,88 @@ PAGE_TEMPLATE = """
       justify-content: center;
       gap: 10px;
       margin-top: 14px;
+    }
+
+
+    .pagination-footer {
+      display: flex;
+      justify-content: center;
+      margin-top: 22px;
+    }
+
+    .results-search {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: min(100%, 430px);
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(128, 154, 207, 0.18);
+      background: rgba(10, 16, 28, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .results-search-input {
+      width: min(100%, 240px);
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .results-search-input::placeholder {
+      color: rgba(198, 214, 244, 0.48);
+    }
+
+    .results-search-button,
+    .results-search-clear {
+      border: 0;
+      background: rgba(148, 242, 217, 0.1);
+      color: #dffdf6;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.18s ease, transform 0.18s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .results-search-button {
+      background: rgba(138, 183, 255, 0.16);
+      color: #edf5ff;
+    }
+
+    .results-search-button:hover,
+    .results-search-clear:hover {
+      background: rgba(148, 242, 217, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .results-search-button:hover {
+      background: rgba(138, 183, 255, 0.24);
+    }
+
+    .results-search-meta {
+      margin-top: 14px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .tile-action-button {
@@ -1310,7 +1379,8 @@ PAGE_TEMPLATE = """
             {% if subreddit_meta and subreddit_meta.get('over18') %}
               <span class="button-link muted">18+</span>
             {% endif %}
-            <span class="button-link muted js-media-count">{{ media_count }} {% if results_query %}matching {% endif %}media item{% if media_count != 1 %}s{% endif %}</span>
+            <span class="button-link muted">{{ media_count }} {% if results_query %}matching {% endif %}media item{% if media_count != 1 %}s{% endif %}</span>
+            <span class="button-link muted js-post-count">{{ posts|length }} post{% if posts|length != 1 %}s{% endif %} on this page</span>
             <form class="results-search" method="get" action="/" data-results-search>
               <input type="hidden" name="subreddit" value="{{ subreddit }}">
               <input type="hidden" name="sort" value="{{ sort }}">
@@ -1348,71 +1418,86 @@ PAGE_TEMPLATE = """
         {% if posts %}
           <div class="gallery">
             {% for post in posts %}
-              {% for media in post['media_items'] %}
-                {% set download_url = media_download_url(media) %}
-                {% set download_filename = build_download_filename(post['title'], media) %}
-                <div class="tile" data-search-text="{{ media.get('search_text', '')|e }}">
-                  <div class="media-shell">
-                    {% if media['kind'] == 'image' %}
-                      <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
-                        <img class="media-frame" loading="lazy" src="{{ media['url'] }}" alt="{{ post['title'] }}">
-                      </a>
-                    {% elif media['kind'] == 'gifv' %}
-                      <span class="media-pill">GIF / clip</span>
-                      <video
-                        class="media-frame deferred-video"
-                        {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
-                        preload="none"
-                        muted
-                        loop
-                        playsinline
-                        data-kind="gifv"
-                        {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
-                        {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
-                      >
-                        {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
-                        {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
-                      </video>
-                      <button type="button" class="media-load-btn" data-autoplay="1">Play clip</button>
-                    {% else %}
-                      <span class="media-pill">Video</span>
-                      <video
-                        class="media-frame deferred-video"
-                        {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
-                        controls
-                        preload="none"
-                        playsinline
-                        data-kind="video"
-                        {% if media.get('dash_url') %}data-dash-url="{{ media['dash_url'] }}"{% endif %}
-                        {% if media.get('hls_url') %}data-hls-url="{{ media['hls_url'] }}"{% endif %}
-                        {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
-                        {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
-                      >
-                        {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
-                        {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
-                        Sorry, your browser could not play this video.
-                      </video>
-                      <button type="button" class="media-load-btn" data-autoplay="1">Play video</button>
-                    {% endif %}
-                  </div>
-
-                  <div class="tile-body">
-                    <div class="title">{{ post['title'] }}</div>
-                    <div class="meta">
-                      by u/{{ post['author'] }} · {{ media['label'] }}{% if post['is_nsfw'] %} · NSFW{% endif %}
-                    </div>
-                    <div class="tile-actions">
-                      {% if download_url %}
-                        <a class="tile-action-button" href="/download?url={{ download_url|urlencode }}&filename={{ download_filename|urlencode }}{% if media.get('dash_url') %}&dash_url={{ media['dash_url']|urlencode }}{% endif %}">Download</a>
+              {% set first_media = post['media_items'][0] %}
+              {% set first_download_url = media_download_url(first_media) %}
+              {% set first_download_filename = build_download_filename(post['title'], first_media) %}
+              <div class="tile" data-media-carousel data-active-index="0" data-search-text="{{ post.get('search_text', '')|e }}">
+                <div class="media-shell media-carousel {% if post['media_items']|length > 1 %}has-multiple{% endif %}">
+                  {% if post['media_items']|length > 1 %}
+                    <span class="media-count-badge">{{ post['media_items']|length }} media</span>
+                  {% endif %}
+                  {% for media in post['media_items'] %}
+                    {% set download_url = media_download_url(media) %}
+                    {% set download_filename = build_download_filename(post['title'], media) %}
+                    <div class="media-slide {% if loop.first %}is-active{% endif %}" data-media-slide data-media-label="{{ media['label']|e }}" {% if download_url %}data-download-href="/download?url={{ download_url|urlencode }}&filename={{ download_filename|urlencode }}{% if media.get('dash_url') %}&dash_url={{ media['dash_url']|urlencode }}{% endif %}"{% endif %} aria-hidden="{% if loop.first %}false{% else %}true{% endif %}">
+                      {% if media['kind'] == 'image' %}
+                        <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
+                          <img class="media-frame" loading="lazy" src="{{ media['url'] }}" alt="{{ post['title'] }}">
+                        </a>
+                      {% elif media['kind'] == 'gifv' %}
+                        <span class="media-pill">GIF / clip</span>
+                        <video
+                          class="media-frame deferred-video"
+                          {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
+                          preload="none"
+                          muted
+                          loop
+                          playsinline
+                          data-kind="gifv"
+                          {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
+                          {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
+                        >
+                          {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
+                          {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
+                        </video>
+                        <button type="button" class="media-load-btn" data-autoplay="1">Play clip</button>
+                      {% else %}
+                        <span class="media-pill">Video</span>
+                        <video
+                          class="media-frame deferred-video"
+                          {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
+                          controls
+                          preload="none"
+                          playsinline
+                          data-kind="video"
+                          {% if media.get('dash_url') %}data-dash-url="{{ media['dash_url'] }}"{% endif %}
+                          {% if media.get('hls_url') %}data-hls-url="{{ media['hls_url'] }}"{% endif %}
+                          {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
+                          {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
+                        >
+                          {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
+                          {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
+                          Sorry, your browser could not play this video.
+                        </video>
+                        <button type="button" class="media-load-btn" data-autoplay="1">Play video</button>
                       {% endif %}
-                      <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                     </div>
+                  {% endfor %}
+                  {% if post['media_items']|length > 1 %}
+                    <div class="media-carousel-nav">
+                      <button type="button" class="media-nav-button" data-carousel-prev aria-label="Previous media">‹</button>
+                      <span class="media-nav-status" data-carousel-status>1 / {{ post['media_items']|length }}</span>
+                      <button type="button" class="media-nav-button" data-carousel-next aria-label="Next media">›</button>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="tile-body">
+                  <div class="title">{{ post['title'] }}</div>
+                  <div class="meta">
+                    by u/{{ post['author'] }} · <span data-active-media-label>{{ first_media['label'] }}</span>{% if post['media_items']|length > 1 %} · {{ post['media_items']|length }} files{% endif %}{% if post['is_nsfw'] %} · NSFW{% endif %}
+                  </div>
+                  <div class="tile-actions">
+                    {% if first_download_url %}
+                      <a class="tile-action-button" data-download-button href="/download?url={{ first_download_url|urlencode }}&filename={{ first_download_filename|urlencode }}{% if first_media.get('dash_url') %}&dash_url={{ first_media['dash_url']|urlencode }}{% endif %}">Download</a>
+                    {% endif %}
+                    <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                   </div>
                 </div>
-              {% endfor %}
+              </div>
             {% endfor %}
           </div>
-          <div class="notice is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
+          <div class="notice is-hidden" data-results-filter-empty>No posts on this page matched your search.</div>
         {% else %}
           {% if results_query %}<div class="notice">No matching media posts were found in r/{{ subreddit }} for “{{ results_query }}”.</div>{% else %}<div class="notice">No supported media posts were found in this listing.</div>{% endif %}
         {% endif %}
@@ -1437,7 +1522,8 @@ PAGE_TEMPLATE = """
                 {{ current_sort_label }}
               {% endif %}
             </span>
-            <span class="button-link muted js-media-count">{{ media_count }} {% if results_query %}matching {% endif %}media item{% if media_count != 1 %}s{% endif %}</span>
+            <span class="button-link muted">{{ media_count }} {% if results_query %}matching {% endif %}media item{% if media_count != 1 %}s{% endif %}</span>
+            <span class="button-link muted js-post-count">{{ posts|length }} post{% if posts|length != 1 %}s{% endif %} on this page</span>
             <form class="results-search" method="get" action="/" data-results-search>
               <input type="hidden" name="username" value="{{ username }}">
               <input type="hidden" name="sort" value="{{ sort }}">
@@ -1481,75 +1567,89 @@ PAGE_TEMPLATE = """
         {% if posts %}
           <div class="gallery">
             {% for post in posts %}
-              {% for media in post['media_items'] %}
-                {% set download_url = media_download_url(media) %}
-                {% set download_filename = build_download_filename(post['title'], media) %}
-                <div class="tile" data-search-text="{{ media.get('search_text', '')|e }}">
-                  <div class="media-shell">
-                    {% if media['kind'] == 'image' %}
-                      <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
-                        <img class="media-frame" loading="lazy" src="{{ media['url'] }}" alt="{{ post['title'] }}">
-                      </a>
-                    {% elif media['kind'] == 'gifv' %}
-                      <span class="media-pill">GIF / clip</span>
-                      <video
-                        class="media-frame deferred-video"
-                        {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
-                        preload="none"
-                        muted
-                        loop
-                        playsinline
-                        data-kind="gifv"
-                        {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
-                        {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
-                      >
-                        {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
-                        {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
-                      </video>
-                      <button type="button" class="media-load-btn" data-autoplay="1">Play clip</button>
-                    {% else %}
-                      <span class="media-pill">Video</span>
-                      <video
-                        class="media-frame deferred-video"
-                        {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
-                        controls
-                        preload="none"
-                        playsinline
-                        data-kind="video"
-                        {% if media.get('dash_url') %}data-dash-url="{{ media['dash_url'] }}"{% endif %}
-                        {% if media.get('hls_url') %}data-hls-url="{{ media['hls_url'] }}"{% endif %}
-                        {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
-                        {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
-                      >
-                        {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
-                        {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
-                        Sorry, your browser could not play this video.
-                      </video>
-                      <button type="button" class="media-load-btn" data-autoplay="1">Play video</button>
-                    {% endif %}
-                  </div>
-
-                  <div class="tile-body">
-                    <div class="title">{{ post['title'] }}</div>
-                    <div class="meta">
-                      posted to r/{{ post['subreddit'] }} · {{ media['label'] }}{% if post['is_nsfw'] %} · NSFW{% endif %}
-                    </div>
-                    <div class="tile-actions">
-                      {% if download_url %}
-                        <a class="tile-action-button" href="/download?url={{ download_url|urlencode }}&filename={{ download_filename|urlencode }}{% if media.get('dash_url') %}&dash_url={{ media['dash_url']|urlencode }}{% endif %}">Download</a>
+              {% set first_media = post['media_items'][0] %}
+              {% set first_download_url = media_download_url(first_media) %}
+              {% set first_download_filename = build_download_filename(post['title'], first_media) %}
+              <div class="tile" data-media-carousel data-active-index="0" data-search-text="{{ post.get('search_text', '')|e }}">
+                <div class="media-shell media-carousel {% if post['media_items']|length > 1 %}has-multiple{% endif %}">
+                  {% if post['media_items']|length > 1 %}
+                    <span class="media-count-badge">{{ post['media_items']|length }} media</span>
+                  {% endif %}
+                  {% for media in post['media_items'] %}
+                    {% set download_url = media_download_url(media) %}
+                    {% set download_filename = build_download_filename(post['title'], media) %}
+                    <div class="media-slide {% if loop.first %}is-active{% endif %}" data-media-slide data-media-label="{{ media['label']|e }}" {% if download_url %}data-download-href="/download?url={{ download_url|urlencode }}&filename={{ download_filename|urlencode }}{% if media.get('dash_url') %}&dash_url={{ media['dash_url']|urlencode }}{% endif %}"{% endif %} aria-hidden="{% if loop.first %}false{% else %}true{% endif %}">
+                      {% if media['kind'] == 'image' %}
+                        <a href="{{ media['url'] }}" target="_blank" rel="noopener noreferrer">
+                          <img class="media-frame" loading="lazy" src="{{ media['url'] }}" alt="{{ post['title'] }}">
+                        </a>
+                      {% elif media['kind'] == 'gifv' %}
+                        <span class="media-pill">GIF / clip</span>
+                        <video
+                          class="media-frame deferred-video"
+                          {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
+                          preload="none"
+                          muted
+                          loop
+                          playsinline
+                          data-kind="gifv"
+                          {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
+                          {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
+                        >
+                          {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
+                          {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
+                        </video>
+                        <button type="button" class="media-load-btn" data-autoplay="1">Play clip</button>
+                      {% else %}
+                        <span class="media-pill">Video</span>
+                        <video
+                          class="media-frame deferred-video"
+                          {% if media.get('poster') %}poster="{{ media['poster'] }}"{% endif %}
+                          controls
+                          preload="none"
+                          playsinline
+                          data-kind="video"
+                          {% if media.get('dash_url') %}data-dash-url="{{ media['dash_url'] }}"{% endif %}
+                          {% if media.get('hls_url') %}data-hls-url="{{ media['hls_url'] }}"{% endif %}
+                          {% if media.get('mp4_url') %}data-mp4-url="{{ media['mp4_url'] }}"{% endif %}
+                          {% if media.get('webm_url') %}data-webm-url="{{ media['webm_url'] }}"{% endif %}
+                        >
+                          {% if media.get('mp4_url') %}<source data-src="{{ media['mp4_url'] }}" type="video/mp4">{% endif %}
+                          {% if media.get('webm_url') %}<source data-src="{{ media['webm_url'] }}" type="video/webm">{% endif %}
+                          Sorry, your browser could not play this video.
+                        </video>
+                        <button type="button" class="media-load-btn" data-autoplay="1">Play video</button>
                       {% endif %}
-                      <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                     </div>
+                  {% endfor %}
+                  {% if post['media_items']|length > 1 %}
+                    <div class="media-carousel-nav">
+                      <button type="button" class="media-nav-button" data-carousel-prev aria-label="Previous media">‹</button>
+                      <span class="media-nav-status" data-carousel-status>1 / {{ post['media_items']|length }}</span>
+                      <button type="button" class="media-nav-button" data-carousel-next aria-label="Next media">›</button>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="tile-body">
+                  <div class="title">{{ post['title'] }}</div>
+                  <div class="meta">
+                    posted to r/{{ post['subreddit'] }} · <span data-active-media-label>{{ first_media['label'] }}</span>{% if post['media_items']|length > 1 %} · {{ post['media_items']|length }} files{% endif %}{% if post['is_nsfw'] %} · NSFW{% endif %}
+                  </div>
+                  <div class="tile-actions">
+                    {% if first_download_url %}
+                      <a class="tile-action-button" data-download-button href="/download?url={{ first_download_url|urlencode }}&filename={{ first_download_filename|urlencode }}{% if first_media.get('dash_url') %}&dash_url={{ first_media['dash_url']|urlencode }}{% endif %}">Download</a>
+                    {% endif %}
+                    <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                   </div>
                 </div>
-              {% endfor %}
+              </div>
             {% endfor %}
           </div>
-          <div class="notice is-hidden" data-results-filter-empty>No items on this page matched your search.</div>
+          <div class="notice is-hidden" data-results-filter-empty>No posts on this page matched your search.</div>
         {% else %}
           {% if results_query %}<div class="notice">No matching media posts were found for u/{{ username }} for “{{ results_query }}”.</div>{% else %}<div class="notice">No supported media posts were found for this user.</div>{% endif %}
         {% endif %}
-
         {% if next_after %}
           <div class="pagination-footer">
             <a class="button-link muted" href="/?username={{ username|urlencode }}&sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}&after={{ next_after|urlencode }}{% if over18 %}&over18=1{% endif %}{% if results_query %}&results_query={{ results_query|urlencode }}{% endif %}">Next page</a>
@@ -1557,8 +1657,6 @@ PAGE_TEMPLATE = """
         {% endif %}
       </div>
     {% endif %}
-  </div>
-
   <script src="https://cdn.dashjs.org/latest/modern/umd/dash.all.min.js"></script>
   <script>
     (() => {
@@ -1616,13 +1714,21 @@ PAGE_TEMPLATE = """
         }
       }
 
+      function ensureVideoAudioState(video) {
+        if (!video || video.dataset.kind !== "video") return;
+        video.muted = false;
+        video.defaultMuted = false;
+        video.removeAttribute("muted");
+        try {
+          video.volume = 1;
+        } catch (_) {}
+      }
+
       function loadDeferredVideo(video, autoplay = false) {
         if (!video) return;
 
         if (video.dataset.loaded === "1") {
-          if (video.dataset.kind === "video") {
-            video.muted = false;
-          }
+          ensureVideoAudioState(video);
           if (autoplay) {
             const playPromise = video.play();
             if (playPromise) playPromise.catch(() => {});
@@ -1640,7 +1746,7 @@ PAGE_TEMPLATE = """
             player.initialize(video, dashUrl, false);
             video._dashPlayer = player;
             video.dataset.loaded = "1";
-            video.muted = false;
+            ensureVideoAudioState(video);
             if (shell) shell.classList.add("is-loaded");
 
             if (autoplay) {
@@ -1668,7 +1774,11 @@ PAGE_TEMPLATE = """
 
         video.load();
         video.dataset.loaded = "1";
-        video.muted = video.dataset.kind === "gifv";
+        if (video.dataset.kind === "gifv") {
+          video.muted = true;
+        } else {
+          ensureVideoAudioState(video);
+        }
 
         if (shell) shell.classList.add("is-loaded");
 
@@ -1686,6 +1796,71 @@ PAGE_TEMPLATE = """
         });
       }
 
+      function pauseVideosInSlide(slide) {
+        if (!slide) return;
+        slide.querySelectorAll("video.deferred-video").forEach((video) => {
+          if (!video.paused) {
+            video.pause();
+          }
+        });
+      }
+
+      function setActiveCarouselSlide(tile, nextIndex) {
+        if (!tile) return;
+
+        const slides = Array.from(tile.querySelectorAll("[data-media-slide]"));
+        if (!slides.length) return;
+
+        const total = slides.length;
+        const currentIndex = Number(tile.dataset.activeIndex || 0);
+        const safeIndex = ((nextIndex % total) + total) % total;
+
+        if (slides[currentIndex] && currentIndex !== safeIndex) {
+          pauseVideosInSlide(slides[currentIndex]);
+        }
+
+        slides.forEach((slide, index) => {
+          const isActive = index === safeIndex;
+          slide.classList.toggle("is-active", isActive);
+          slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+        });
+
+        tile.dataset.activeIndex = String(safeIndex);
+
+        const activeSlide = slides[safeIndex];
+        const activeVideo = activeSlide.querySelector('video.deferred-video[data-kind="video"]');
+        if (activeVideo && activeVideo.dataset.loaded === "1") {
+          ensureVideoAudioState(activeVideo);
+        }
+
+        const counter = tile.querySelector("[data-carousel-status]");
+        const label = tile.querySelector("[data-active-media-label]");
+        const downloadButton = tile.querySelector("[data-download-button]");
+
+        if (counter) {
+          counter.textContent = `${safeIndex + 1} / ${total}`;
+        }
+
+        if (label) {
+          label.textContent = activeSlide.dataset.mediaLabel || "media";
+        }
+
+        if (downloadButton) {
+          const href = activeSlide.dataset.downloadHref || "";
+          if (href) {
+            downloadButton.setAttribute("href", href);
+            downloadButton.classList.remove("is-hidden");
+          } else {
+            downloadButton.removeAttribute("href");
+            downloadButton.classList.add("is-hidden");
+          }
+        }
+      }
+
+      document.querySelectorAll("[data-media-carousel]").forEach((tile) => {
+        setActiveCarouselSlide(tile, Number(tile.dataset.activeIndex || 0));
+      });
+
       document.addEventListener("click", (event) => {
         const button = event.target.closest(".media-load-btn");
         if (!button) return;
@@ -1693,7 +1868,8 @@ PAGE_TEMPLATE = """
         const shell = button.closest(".media-shell");
         if (!shell) return;
 
-        const video = shell.querySelector("video.deferred-video");
+        const activeSlide = shell.querySelector(".media-slide.is-active");
+        const video = (activeSlide || shell).querySelector("video.deferred-video");
         if (!video) return;
 
         const autoplay = button.dataset.autoplay === "1";
@@ -1702,11 +1878,20 @@ PAGE_TEMPLATE = """
           pauseOtherGifv(video);
         }
 
-        if (video.dataset.kind === "video") {
-          video.muted = false;
-        }
-
+        ensureVideoAudioState(video);
         loadDeferredVideo(video, autoplay);
+      });
+
+      document.addEventListener("click", (event) => {
+        const carouselButton = event.target.closest("[data-carousel-prev], [data-carousel-next]");
+        if (!carouselButton) return;
+
+        const tile = carouselButton.closest("[data-media-carousel]");
+        if (!tile) return;
+
+        const currentIndex = Number(tile.dataset.activeIndex || 0);
+        const delta = carouselButton.hasAttribute("data-carousel-next") ? 1 : -1;
+        setActiveCarouselSlide(tile, currentIndex + delta);
       });
 
       document.addEventListener("click", (event) => {
@@ -1736,25 +1921,25 @@ PAGE_TEMPLATE = """
       const resultsSearch = resultsPanel ? resultsPanel.querySelector("[data-results-search]") : null;
       const resultsSearchInput = resultsSearch ? resultsSearch.querySelector("[data-results-search-input]") : null;
       const resultsSearchSubmitField = resultsSearch ? resultsSearch.querySelector("[data-results-search-submit]") : null;
-      const mediaCountBadge = resultsPanel ? resultsPanel.querySelector(".js-media-count") : null;
+      const postCountBadge = resultsPanel ? resultsPanel.querySelector(".js-post-count") : null;
       const filterEmptyNotice = resultsPanel ? resultsPanel.querySelector("[data-results-filter-empty]") : null;
       const resultTiles = resultsPanel ? Array.from(resultsPanel.querySelectorAll(".tile[data-search-text]")) : [];
 
-      function updateMediaCountBadge(visibleCount, totalCount) {
-        if (!mediaCountBadge) return;
+      function updatePostCountBadge(visibleCount, totalCount) {
+        if (!postCountBadge) return;
 
         const hasActiveFilter = resultsSearchInput && resultsSearchInput.value.trim() !== "";
-        const itemLabel = totalCount === 1 ? "media item" : "media items";
+        const postLabel = totalCount === 1 ? "post" : "posts";
 
         if (hasActiveFilter) {
-          mediaCountBadge.textContent = `${visibleCount} of ${totalCount} ${itemLabel}`;
+          postCountBadge.textContent = `${visibleCount} of ${totalCount} ${postLabel}`;
         } else {
-          mediaCountBadge.textContent = `${totalCount} ${itemLabel}`;
+          postCountBadge.textContent = `${totalCount} ${postLabel} on this page`;
         }
       }
 
       function applyResultsFilter() {
-        if (!resultsSearchInput || !mediaCountBadge) return;
+        if (!resultsSearchInput || !postCountBadge) return;
 
         const needle = resultsSearchInput.value.trim().toLowerCase();
         const totalCount = resultTiles.length;
@@ -1775,7 +1960,7 @@ PAGE_TEMPLATE = """
           filterEmptyNotice.classList.toggle("is-hidden", !(needle && visibleCount === 0));
         }
 
-        updateMediaCountBadge(visibleCount, totalCount);
+        updatePostCountBadge(visibleCount, totalCount);
       }
 
       if (resultsSearchInput) {
@@ -1950,6 +2135,7 @@ class RedditClient:
             return data.get("data", {})
         except Exception:
             return None
+
 
     def search_subreddit_posts(
         self,
@@ -2391,6 +2577,11 @@ def build_media_search_text(post: dict[str, Any], media: dict[str, Any]) -> str:
     return normalise_search_query(" ".join(str(part) for part in parts if part))
 
 
+def build_post_search_text(post: dict[str, Any], media_items: list[dict[str, Any]]) -> str:
+    joined = " ".join(build_media_search_text(post, media) for media in media_items)
+    return normalise_search_query(joined)
+
+
 def collect_unique_posts(
     fetch_page,
     *,
@@ -2435,18 +2626,13 @@ def collect_unique_posts(
                 if identity in seen_media:
                     continue
 
-                media_with_search = dict(media)
-                media_with_search["search_text"] = build_media_search_text(raw, media)
-
                 seen_media.add(identity)
-                unique_media_items.append(media_with_search)
-                media_count += 1
-
-                if media_count >= target_media_items:
-                    break
+                unique_media_items.append(dict(media))
 
             if not unique_media_items:
                 continue
+
+            media_count += len(unique_media_items)
 
             posts.append(
                 {
@@ -2455,6 +2641,7 @@ def collect_unique_posts(
                     "subreddit": raw.get("subreddit") or "unknown",
                     "is_nsfw": bool(raw.get("over_18")),
                     "media_items": unique_media_items,
+                    "search_text": build_post_search_text(raw, unique_media_items),
                 }
             )
 
@@ -2611,7 +2798,6 @@ def index():
             user_results = client.search_users(user_query)
 
         if active_view == "subreddit" and subreddit:
-            fetch_page = None
             if results_query:
                 fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.search_subreddit_posts(
                     subreddit,
@@ -2639,7 +2825,6 @@ def index():
             subreddit_meta = client.load_subreddit_about(subreddit)
 
         if active_view == "user" and username:
-            fetch_page = None
             if results_query:
                 fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.search_user_posts(
                     username,
