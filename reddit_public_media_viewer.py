@@ -335,24 +335,38 @@ PAGE_TEMPLATE = """
       color: rgba(148, 242, 217, 0.24);
     }
 
-    .search-grid {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 18px;
-      align-items: stretch;
-    }
-
+    .search-grid-primary,
+    .search-grid,
     .search-grid-secondary {
       position: relative;
       z-index: 1;
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       align-items: stretch;
       gap: 18px;
+      margin: 0 auto;
+    }
+
+    .search-grid-primary {
+      margin-bottom: 18px;
+    }
+
+    .search-grid-primary > .field-group {
+      flex: 0 1 calc(50% - 9px);
+      max-width: calc(50% - 9px);
+      min-width: 220px;
+    }
+
+    .search-grid > .field-group,
+    .search-grid-secondary > .field-group {
+      flex: 0 1 calc(25% - 14px);
+      max-width: calc(25% - 14px);
+      min-width: 220px;
+    }
+
+    .search-grid-secondary {
       margin-top: 18px;
-      flex-wrap: wrap;
     }
 
     .field-group {
@@ -418,7 +432,6 @@ PAGE_TEMPLATE = """
     }
 
     .field-group.compact {
-      width: min(280px, 100%);
       min-height: 118px;
     }
 
@@ -1146,8 +1159,11 @@ PAGE_TEMPLATE = """
     }
 
     @media (max-width: 1180px) {
-      .search-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      .search-grid-primary > .field-group,
+      .search-grid > .field-group,
+      .search-grid-secondary > .field-group {
+        flex-basis: calc(50% - 9px);
+        max-width: calc(50% - 9px);
       }
     }
 
@@ -1158,17 +1174,16 @@ PAGE_TEMPLATE = """
     }
 
     @media (max-width: 760px) {
-      .search-grid {
-        grid-template-columns: 1fr;
+      .search-grid-primary > .field-group,
+      .search-grid > .field-group,
+      .search-grid-secondary > .field-group {
+        flex-basis: 100%;
+        max-width: 100%;
       }
 
       .search-grid-secondary {
         flex-direction: column;
         align-items: stretch;
-      }
-
-      .field-group.compact {
-        width: 100%;
       }
 
       .actions-row {
@@ -1212,16 +1227,30 @@ PAGE_TEMPLATE = """
         <h1><span class="hero-title">{{ title }}</span></h1>
         <div class="hero-flourish"><span>❦ ✦ ❦</span></div>
         <p class="hero-copy">
-          Search for <strong>subreddits</strong> or <strong>users</strong>, then open a beautifully arranged media-only gallery.
+          Search across <strong>all of Reddit</strong> for matching <strong>subreddits</strong> and <strong>users</strong>, or open an exact destination and browse a beautifully arranged media-only gallery.
           This local app shows public Reddit media that guest access allows, keeps comments out of the way and loads videos and GIF-style clips on demand for a smoother experience.
-          It will try to display up to <strong>100 unique media items per page</strong>.
+          It will try to display up to <strong>200 unique media items per page</strong>.
         </p>
       </div>
 
       <div class="control-panel">
         <div class="menu-ornament-top">❦ ✦ ❦ ✦ ❦ ✦ ❦</div>
 
-        <form method="get" action="/">
+        <form method="get" action="/" id="viewer-search-form">
+          <div class="search-grid-primary">
+            <div class="field-group">
+              <label class="field-label" for="all_query">All Reddit</label>
+              <input
+                id="all_query"
+                type="text"
+                name="all_query"
+                placeholder="e.g. linux, wallpaper, photography"
+                value="{{ all_query }}"
+              >
+              <span class="field-footer-line"></span>
+            </div>
+          </div>
+
           <div class="search-grid">
             <div class="field-group">
               <label class="field-label" for="query">Subreddits</label>
@@ -1304,6 +1333,11 @@ PAGE_TEMPLATE = """
 
             <div class="actions-right">
               <span id="nsfw-badge" class="nsfw-badge {% if not over18 %}is-hidden{% endif %}">NSFW</span>
+              <a
+                class="button-link muted"
+                href="/?sort={{ sort }}{% if sort == 'top' %}&top_time={{ top_time|urlencode }}{% endif %}{% if over18 %}&over18=1{% endif %}"
+                id="clear-search-fields"
+              >Clear</a>
               <button type="submit">Open Viewer</button>
             </div>
           </div>
@@ -1669,6 +1703,9 @@ PAGE_TEMPLATE = """
       const nsfwBadge = document.getElementById("nsfw-badge");
       const usernameField = document.getElementById("username");
       const subredditField = document.getElementById("subreddit");
+      const allRedditField = document.getElementById("all_query");
+      const searchForm = document.getElementById("viewer-search-form");
+      const clearSearchFieldsButton = document.getElementById("clear-search-fields");
 
       function updateTopTimeVisibility() {
         if (!sortSelect || !topTimeGroup) return;
@@ -1696,6 +1733,24 @@ PAGE_TEMPLATE = """
         window.setTimeout(() => {
           usernameField.classList.remove("field-highlight");
         }, 1400);
+      }
+
+      function clearSearchFields() {
+        if (!searchForm) return;
+
+        searchForm.querySelectorAll('input[type="text"], input[type="search"]').forEach((field) => {
+          field.value = "";
+        });
+
+        if (allRedditField) {
+          allRedditField.focus();
+        }
+      }
+
+      if (clearSearchFieldsButton) {
+        clearSearchFieldsButton.addEventListener("click", () => {
+          window.setTimeout(clearSearchFields, 0);
+        });
       }
 
       if (sortSelect) {
@@ -2883,6 +2938,7 @@ def download_media():
 
 @app.route("/")
 def index():
+    all_query = (request.args.get("all_query") or "").strip()
     query = (request.args.get("query") or "").strip()
     subreddit = (request.args.get("subreddit") or "").strip().removeprefix("r/")
     user_query = (request.args.get("user_query") or "").strip()
@@ -2932,12 +2988,14 @@ def index():
     top_time_label = top_time_label_map.get(top_time, "All time")
     max_api_pages = MAX_API_PAGES_PER_SEARCH if results_query else MAX_API_PAGES_PER_VIEW
     search_sort = ui_sort_to_search_sort(sort)
+    subreddit_search_query = query or all_query
+    user_search_query = user_query or all_query
 
     try:
-        if query:
-            search_results = client.search_subreddits(query)
-        if user_query:
-            user_results = client.search_users(user_query)
+        if subreddit_search_query:
+            search_results = client.search_subreddits(subreddit_search_query)
+        if user_search_query:
+            user_results = client.search_users(user_search_query)
 
         if active_view == "subreddit" and subreddit:
             if results_query:
@@ -2998,6 +3056,7 @@ def index():
     return render_template_string(
         PAGE_TEMPLATE,
         title=APP_TITLE,
+        all_query=all_query,
         query=query,
         subreddit=subreddit,
         user_query=user_query,
