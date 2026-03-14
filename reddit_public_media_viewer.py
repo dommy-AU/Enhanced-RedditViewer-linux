@@ -1146,6 +1146,13 @@ PAGE_TEMPLATE = """
       box-shadow: none;
     }
 
+    .tile-action-button.copy-success {
+      background: rgba(148, 242, 217, 0.18);
+      color: #e8fff8;
+      border: 1px solid rgba(148, 242, 217, 0.38);
+      box-shadow: none;
+    }
+
     .muted-line {
       color: var(--muted);
       font-size: 0.95rem;
@@ -1456,7 +1463,7 @@ PAGE_TEMPLATE = """
               {% set first_media = post['media_items'][0] %}
               {% set first_download_url = media_download_url(first_media) %}
               {% set first_download_filename = build_download_filename(post['title'], first_media) %}
-              <div class="tile" data-media-carousel data-active-index="0" data-search-text="{{ post.get('search_text', '')|e }}">
+              <div class="tile" data-media-carousel data-active-index="0" data-search-text="{{ post.get('search_text', '')|e }}" data-share-url="{{ post.get('reddit_url', '')|e }}">
                 <div class="media-shell media-carousel {% if post['media_items']|length > 1 %}has-multiple{% endif %}">
                   {% if post['media_items']|length > 1 %}
                     <span class="media-count-badge">{{ post['media_items']|length }} media</span>
@@ -1527,6 +1534,7 @@ PAGE_TEMPLATE = """
                       <a class="tile-action-button" data-download-button href="/download?url={{ first_download_url|urlencode }}&filename={{ first_download_filename|urlencode }}{% if first_media.get('dash_url') %}&dash_url={{ first_media['dash_url']|urlencode }}{% endif %}">Download</a>
                     {% endif %}
                     <button type="button" class="tile-action-button secondary" data-expand-button>Expand</button>
+                    <button type="button" class="tile-action-button secondary" data-share-button>Share</button>
                     <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                   </div>
                 </div>
@@ -1606,7 +1614,7 @@ PAGE_TEMPLATE = """
               {% set first_media = post['media_items'][0] %}
               {% set first_download_url = media_download_url(first_media) %}
               {% set first_download_filename = build_download_filename(post['title'], first_media) %}
-              <div class="tile" data-media-carousel data-active-index="0" data-search-text="{{ post.get('search_text', '')|e }}">
+              <div class="tile" data-media-carousel data-active-index="0" data-search-text="{{ post.get('search_text', '')|e }}" data-share-url="{{ post.get('reddit_url', '')|e }}">
                 <div class="media-shell media-carousel {% if post['media_items']|length > 1 %}has-multiple{% endif %}">
                   {% if post['media_items']|length > 1 %}
                     <span class="media-count-badge">{{ post['media_items']|length }} media</span>
@@ -1677,6 +1685,7 @@ PAGE_TEMPLATE = """
                       <a class="tile-action-button" data-download-button href="/download?url={{ first_download_url|urlencode }}&filename={{ first_download_filename|urlencode }}{% if first_media.get('dash_url') %}&dash_url={{ first_media['dash_url']|urlencode }}{% endif %}">Download</a>
                     {% endif %}
                     <button type="button" class="tile-action-button secondary" data-expand-button>Expand</button>
+                    <button type="button" class="tile-action-button secondary" data-share-button>Share</button>
                     <button type="button" class="tile-action-button secondary view-user-btn" data-username="{{ post['author']|e }}">View user</button>
                   </div>
                 </div>
@@ -1745,6 +1754,55 @@ PAGE_TEMPLATE = """
         if (allRedditField) {
           allRedditField.focus();
         }
+      }
+
+      async function copyTextToClipboard(value) {
+        const textToCopy = (value || "").trim();
+        if (!textToCopy) {
+          throw new Error("Missing URL to copy.");
+        }
+
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(textToCopy);
+          return;
+        }
+
+        const helper = document.createElement("textarea");
+        helper.value = textToCopy;
+        helper.setAttribute("readonly", "readonly");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        helper.style.pointerEvents = "none";
+        document.body.appendChild(helper);
+        helper.focus();
+        helper.select();
+
+        const copied = document.execCommand("copy");
+        document.body.removeChild(helper);
+
+        if (!copied) {
+          throw new Error("Clipboard copy failed.");
+        }
+      }
+
+      function showShareButtonState(button, label, className) {
+        if (!button) return;
+
+        const originalLabel = button.dataset.originalLabel || button.textContent.trim() || "Share";
+        button.dataset.originalLabel = originalLabel;
+        button.textContent = label;
+        button.disabled = true;
+        if (className) {
+          button.classList.add(className);
+        }
+
+        window.setTimeout(() => {
+          button.textContent = originalLabel;
+          button.disabled = false;
+          if (className) {
+            button.classList.remove(className);
+          }
+        }, 1400);
       }
 
       if (clearSearchFieldsButton) {
@@ -1950,6 +2008,26 @@ PAGE_TEMPLATE = """
         const currentIndex = Number(tile.dataset.activeIndex || 0);
         const delta = carouselButton.hasAttribute("data-carousel-next") ? 1 : -1;
         setActiveCarouselSlide(tile, currentIndex + delta);
+      });
+
+      document.addEventListener("click", async (event) => {
+        const shareButton = event.target.closest("[data-share-button]");
+        if (!shareButton) return;
+
+        const tile = shareButton.closest("[data-share-url]");
+        const shareUrl = tile ? (tile.dataset.shareUrl || "").trim() : "";
+        if (!shareUrl) {
+          showShareButtonState(shareButton, "No link", "");
+          return;
+        }
+
+        try {
+          await copyTextToClipboard(shareUrl);
+          showShareButtonState(shareButton, "Copied", "copy-success");
+        } catch (error) {
+          console.error("Clipboard copy failed", error);
+          showShareButtonState(shareButton, "Copy failed", "");
+        }
       });
 
       document.addEventListener("click", (event) => {
@@ -2779,6 +2857,22 @@ def build_post_search_text(post: dict[str, Any], media_items: list[dict[str, Any
     return normalise_search_query(joined)
 
 
+def build_reddit_post_url(post: dict[str, Any]) -> str:
+    permalink = normalise_url(post.get("permalink") or "")
+    if permalink.startswith("/"):
+        return f"https://www.reddit.com{permalink}"
+    if permalink:
+        parts = urlsplit(permalink)
+        if parts.scheme in {"http", "https"} and parts.netloc:
+            return permalink
+
+    subreddit = (post.get("subreddit") or "").strip().removeprefix("r/")
+    post_id = (post.get("id") or "").strip()
+    if subreddit and post_id:
+        return f"https://www.reddit.com/r/{quote(subreddit)}/comments/{quote(post_id)}/"
+    return ""
+
+
 def collect_unique_posts(
     fetch_page,
     *,
@@ -2839,6 +2933,7 @@ def collect_unique_posts(
                     "is_nsfw": bool(raw.get("over_18")),
                     "media_items": unique_media_items,
                     "search_text": build_post_search_text(raw, unique_media_items),
+                    "reddit_url": build_reddit_post_url(raw),
                 }
             )
 
