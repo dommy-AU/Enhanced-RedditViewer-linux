@@ -1218,7 +1218,173 @@ PAGE_TEMPLATE = """
         width: 58px;
       }
     }
-  </style>
+  
+    .media-load-btn {
+      position: absolute !important;
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      transform-origin: center center !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 148px !important;
+      height: 48px !important;
+      padding: 0 18px !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+      white-space: nowrap !important;
+      z-index: 30 !important;
+    }
+
+    .media-load-btn:hover,
+    .media-load-btn:focus,
+    .media-load-btn:focus-visible,
+    .media-load-btn:active {
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      margin: 0 !important;
+    }
+
+    .media-load-btn > * {
+      pointer-events: none;
+    }
+
+
+    .media-shell {
+      position: relative;
+    }
+
+    .media-shell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.18s ease;
+      z-index: 2;
+      border-radius: inherit;
+    }
+
+    .media-shell.is-loaded::after {
+      opacity: 0;
+    }
+
+    .media-shell .media-frame,
+    .media-shell video,
+    .media-shell img {
+      position: relative;
+      z-index: 1;
+    }
+
+    .media-load-btn {
+      z-index: 3 !important;
+    }
+
+
+    /* Stronger pre-load state for Firefox / Linux */
+    .media-shell {
+      position: relative;
+    }
+
+    
+
+    /* Disable misleading preview interactions before load */
+    .media-shell:not(.is-loaded) video,
+    .media-shell:not(.is-loaded) .play-overlay,
+    .media-shell:not(.is-loaded) .mute-toggle,
+    .media-shell:not(.is-loaded) .volume-toggle {
+      pointer-events: none !important;
+    }
+
+    /* Fade confusing controls before load */
+    .media-shell:not(.is-loaded) .play-overlay,
+    .media-shell:not(.is-loaded) .mute-toggle,
+    .media-shell:not(.is-loaded) .volume-toggle {
+      opacity: 0.28 !important;
+    }
+
+    /* Keep thumbnail visible but clearly inactive */
+    .media-shell:not(.is-loaded) .media-frame,
+    .media-shell:not(.is-loaded) img,
+    .media-shell:not(.is-loaded) video {
+      filter: brightness(0.82);
+    }
+
+    /* Once loaded, remove the guidance bubble */
+    
+
+
+    .media-load-btn {
+      transition:
+        transform 0.14s ease,
+        box-shadow 0.14s ease,
+        filter 0.14s ease,
+        background-color 0.14s ease,
+        border-color 0.14s ease;
+    }
+
+    .media-load-btn:hover,
+    .media-load-btn:focus-visible {
+      transform: translate(-50%, -50%) scale(1.04) !important;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
+      filter: brightness(1.06);
+    }
+
+    .media-load-btn:active {
+      transform: translate(-50%, -50%) scale(0.98) !important;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.30);
+    }
+
+
+    .media-load-btn {
+      transition:
+        transform 0.14s ease,
+        box-shadow 0.14s ease,
+        filter 0.14s ease,
+        background-color 0.14s ease,
+        border-color 0.14s ease;
+    }
+
+    .media-load-btn::before {
+      content: "";
+      position: absolute;
+      inset: -8px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0) 72%);
+      opacity: 0;
+      transform: scale(0.96);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .media-load-btn:hover,
+    .media-load-btn:focus-visible {
+      transform: translate(-50%, -50%) scale(1.04) !important;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.42);
+      filter: brightness(1.06);
+    }
+
+    .media-load-btn:hover::before,
+    .media-load-btn:focus-visible::before {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .media-load-btn:active {
+      transform: translate(-50%, -50%) scale(0.98) !important;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.30);
+    }
+
+    .media-load-btn:active::before {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
+
+</style>
 </head>
 <body>
   <div class="wrap">
