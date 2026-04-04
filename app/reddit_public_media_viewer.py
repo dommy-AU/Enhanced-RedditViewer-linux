@@ -5,13 +5,29 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
+import sys
 import tempfile
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import requests
-from flask import Flask, Response, render_template_string, request, session, stream_with_context
+from flask import (
+    Flask,
+    Response,
+    render_template_string,
+    request,
+    session,
+    stream_with_context,
+)
+
+
+def handle_sigterm(signum, frame):
+    sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 APP_TITLE = "Reddit Public Media Viewer"
 USER_AGENT = os.getenv(
@@ -1218,7 +1234,7 @@ PAGE_TEMPLATE = """
         width: 58px;
       }
     }
-  
+
     .media-load-btn {
       position: absolute !important;
       left: 50% !important;
@@ -1289,7 +1305,7 @@ PAGE_TEMPLATE = """
       position: relative;
     }
 
-    
+
 
     /* Disable misleading preview interactions before load */
     .media-shell:not(.is-loaded) video,
@@ -1314,7 +1330,7 @@ PAGE_TEMPLATE = """
     }
 
     /* Once loaded, remove the guidance bubble */
-    
+
 
 
     .media-load-btn {
@@ -2449,12 +2465,21 @@ class RedditClient:
         if after:
             params["after"] = after
         if sort == "top":
-            params["t"] = top_time if top_time in {"hour", "day", "week", "month", "year", "all"} else "all"
-        return self._get(f"https://www.reddit.com/r/{quote(subreddit)}/{sort}.json", params=params)
+            params["t"] = (
+                top_time
+                if top_time in {"hour", "day", "week", "month", "year", "all"}
+                else "all"
+            )
+        return self._get(
+            f"https://www.reddit.com/r/{quote(subreddit)}/{sort}.json", params=params
+        )
 
     def load_subreddit_about(self, subreddit: str) -> dict[str, Any] | None:
         try:
-            data = self._get(f"https://www.reddit.com/r/{quote(subreddit)}/about.json", params={"raw_json": 1})
+            data = self._get(
+                f"https://www.reddit.com/r/{quote(subreddit)}/about.json",
+                params={"raw_json": 1},
+            )
             return data.get("data", {})
         except Exception:
             return None
@@ -2475,16 +2500,25 @@ class RedditClient:
         if after:
             params["after"] = after
         if sort == "top":
-            params["t"] = top_time if top_time in {"hour", "day", "week", "month", "year", "all"} else "all"
-        return self._get(f"https://www.reddit.com/user/{quote(username)}/submitted.json", params=params)
+            params["t"] = (
+                top_time
+                if top_time in {"hour", "day", "week", "month", "year", "all"}
+                else "all"
+            )
+        return self._get(
+            f"https://www.reddit.com/user/{quote(username)}/submitted.json",
+            params=params,
+        )
 
     def load_user_about(self, username: str) -> dict[str, Any] | None:
         try:
-            data = self._get(f"https://www.reddit.com/user/{quote(username)}/about.json", params={"raw_json": 1})
+            data = self._get(
+                f"https://www.reddit.com/user/{quote(username)}/about.json",
+                params={"raw_json": 1},
+            )
             return data.get("data", {})
         except Exception:
             return None
-
 
     def search_subreddit_posts(
         self,
@@ -2495,7 +2529,11 @@ class RedditClient:
         sort: str = "relevance",
         top_time: str = "all",
     ) -> dict[str, Any]:
-        sort = sort if sort in {"relevance", "hot", "top", "new", "comments"} else "relevance"
+        sort = (
+            sort
+            if sort in {"relevance", "hot", "top", "new", "comments"}
+            else "relevance"
+        )
         params = {
             "q": query,
             "restrict_sr": "on",
@@ -2508,8 +2546,14 @@ class RedditClient:
         if after:
             params["after"] = after
         if sort == "top":
-            params["t"] = top_time if top_time in {"hour", "day", "week", "month", "year", "all"} else "all"
-        return self._get(f"https://www.reddit.com/r/{quote(subreddit)}/search.json", params=params)
+            params["t"] = (
+                top_time
+                if top_time in {"hour", "day", "week", "month", "year", "all"}
+                else "all"
+            )
+        return self._get(
+            f"https://www.reddit.com/r/{quote(subreddit)}/search.json", params=params
+        )
 
     def search_user_posts(
         self,
@@ -2520,7 +2564,11 @@ class RedditClient:
         sort: str = "relevance",
         top_time: str = "all",
     ) -> dict[str, Any]:
-        sort = sort if sort in {"relevance", "hot", "top", "new", "comments"} else "relevance"
+        sort = (
+            sort
+            if sort in {"relevance", "hot", "top", "new", "comments"}
+            else "relevance"
+        )
         author_query = f'author:"{username}" {query}'.strip()
         params = {
             "q": author_query,
@@ -2533,7 +2581,11 @@ class RedditClient:
         if after:
             params["after"] = after
         if sort == "top":
-            params["t"] = top_time if top_time in {"hour", "day", "week", "month", "year", "all"} else "all"
+            params["t"] = (
+                top_time
+                if top_time in {"hour", "day", "week", "month", "year", "all"}
+                else "all"
+            )
         return self._get("https://www.reddit.com/search.json", params=params)
 
 
@@ -2568,7 +2620,7 @@ def ensure_mp4_filename(filename: str) -> str:
     lower = base.lower()
     for ext in (".mp4", ".webm", ".mov", ".m4v", ".mkv"):
         if lower.endswith(ext):
-            base = base[:-len(ext)]
+            base = base[: -len(ext)]
             break
     return f"{base}.mp4"
 
@@ -2596,12 +2648,14 @@ def build_temp_file_response(
 
     response = Response(stream_with_context(generate()), content_type=content_type)
     response.headers["Content-Disposition"] = (
-        f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}'
+        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{encoded_filename}"
     )
     return response
 
 
-def select_best_dash_stream_maps(dash_url: str, ffprobe_bin: str | None) -> tuple[str, str]:
+def select_best_dash_stream_maps(
+    dash_url: str, ffprobe_bin: str | None
+) -> tuple[str, str]:
     video_map = "0:v:0"
     audio_map = "0:a:0?"
 
@@ -2683,14 +2737,16 @@ def select_best_dash_stream_maps(dash_url: str, ffprobe_bin: str | None) -> tupl
                 best_audio = candidate
 
     if best_video is not None:
-        video_map = f'0:{best_video["index"]}'
+        video_map = f"0:{best_video['index']}"
     if best_audio is not None:
-        audio_map = f'0:{best_audio["index"]}?'
+        audio_map = f"0:{best_audio['index']}?"
 
     return video_map, audio_map
 
 
-def build_muxed_reddit_video_download(dash_url: str, filename: str) -> tuple[str, str, str]:
+def build_muxed_reddit_video_download(
+    dash_url: str, filename: str
+) -> tuple[str, str, str]:
     ffmpeg_bin = shutil.which("ffmpeg")
     if not ffmpeg_bin:
         raise RuntimeError(
@@ -2728,7 +2784,11 @@ def build_muxed_reddit_video_download(dash_url: str, filename: str) -> tuple[str
         text=True,
     )
 
-    if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+    if (
+        result.returncode != 0
+        or not os.path.exists(output_path)
+        or os.path.getsize(output_path) == 0
+    ):
         shutil.rmtree(temp_dir, ignore_errors=True)
         error_tail = (result.stderr or "").strip()
         raise RuntimeError(
@@ -2782,8 +2842,12 @@ def build_download_filename(title: str, media: dict[str, Any]) -> str:
     return base
 
 
-IMG_RE = re.compile(r"https?://\S+?(?:\.jpg|\.jpeg|\.png|\.webp|\.gif)(?:\?\S*)?$", re.IGNORECASE)
-VID_RE = re.compile(r"https?://\S+?(?:\.mp4|\.webm|\.mov|\.m4v)(?:\?\S*)?$", re.IGNORECASE)
+IMG_RE = re.compile(
+    r"https?://\S+?(?:\.jpg|\.jpeg|\.png|\.webp|\.gif)(?:\?\S*)?$", re.IGNORECASE
+)
+VID_RE = re.compile(
+    r"https?://\S+?(?:\.mp4|\.webm|\.mov|\.m4v)(?:\?\S*)?$", re.IGNORECASE
+)
 GIFV_RE = re.compile(r"https?://\S+?\.gifv(?:\?\S*)?$", re.IGNORECASE)
 
 
@@ -2855,7 +2919,9 @@ def extract_media(post: dict[str, Any]) -> list[dict[str, Any]]:
 
         identity = (
             kind,
-            canonical_media_url(dash_clean or hls_clean or mp4_clean or webm_clean or ""),
+            canonical_media_url(
+                dash_clean or hls_clean or mp4_clean or webm_clean or ""
+            ),
         )
         if not identity[1] or identity in seen:
             return
@@ -2892,7 +2958,11 @@ def extract_media(post: dict[str, Any]) -> list[dict[str, Any]]:
         reddit_video = container.get("reddit_video") or {}
         if not isinstance(reddit_video, dict):
             continue
-        if reddit_video.get("fallback_url") or reddit_video.get("hls_url") or reddit_video.get("dash_url"):
+        if (
+            reddit_video.get("fallback_url")
+            or reddit_video.get("hls_url")
+            or reddit_video.get("dash_url")
+        ):
             add_video(
                 mp4_url=reddit_video.get("fallback_url"),
                 hls_url=reddit_video.get("hls_url"),
@@ -2905,7 +2975,9 @@ def extract_media(post: dict[str, Any]) -> list[dict[str, Any]]:
     if media_items:
         return media_items
 
-    direct_url = normalise_url(post.get("url_overridden_by_dest") or post.get("url") or "")
+    direct_url = normalise_url(
+        post.get("url_overridden_by_dest") or post.get("url") or ""
+    )
     lower = direct_url.lower()
 
     if direct_url and lower.endswith(GIFV_EXTENSIONS):
@@ -2959,7 +3031,9 @@ def extract_media(post: dict[str, Any]) -> list[dict[str, Any]]:
     preview = post.get("preview", {})
 
     reddit_video_preview = preview.get("reddit_video_preview") or {}
-    if isinstance(reddit_video_preview, dict) and reddit_video_preview.get("fallback_url"):
+    if isinstance(reddit_video_preview, dict) and reddit_video_preview.get(
+        "fallback_url"
+    ):
         add_video(
             mp4_url=reddit_video_preview.get("fallback_url"),
             hls_url=reddit_video_preview.get("hls_url"),
@@ -3018,7 +3092,9 @@ def build_media_search_text(post: dict[str, Any], media: dict[str, Any]) -> str:
     return normalise_search_query(" ".join(str(part) for part in parts if part))
 
 
-def build_post_search_text(post: dict[str, Any], media_items: list[dict[str, Any]]) -> str:
+def build_post_search_text(
+    post: dict[str, Any], media_items: list[dict[str, Any]]
+) -> str:
     joined = " ".join(build_media_search_text(post, media) for media in media_items)
     return normalise_search_query(joined)
 
@@ -3190,7 +3266,7 @@ def download_media():
 
         response = Response(stream_with_context(generate()), content_type=content_type)
         response.headers["Content-Disposition"] = (
-            f'attachment; filename="{filename}"; filename*=UTF-8\'\'{encoded_filename}'
+            f"attachment; filename=\"{filename}\"; filename*=UTF-8''{encoded_filename}"
         )
         return response
     except requests.RequestException as exc:
@@ -3247,7 +3323,9 @@ def index():
     current_sort_label = sort_label_map.get(sort, sort.capitalize())
     top_time_label_map = dict(TOP_TIME_OPTIONS)
     top_time_label = top_time_label_map.get(top_time, "All time")
-    max_api_pages = MAX_API_PAGES_PER_SEARCH if results_query else MAX_API_PAGES_PER_VIEW
+    max_api_pages = (
+        MAX_API_PAGES_PER_SEARCH if results_query else MAX_API_PAGES_PER_VIEW
+    )
     search_sort = ui_sort_to_search_sort(sort)
     subreddit_search_query = query or all_query
     user_search_query = user_query or all_query
@@ -3260,55 +3338,67 @@ def index():
 
         if active_view == "subreddit" and subreddit:
             if results_query:
-                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.search_subreddit_posts(
-                    subreddit,
-                    query=results_query,
-                    after=after,
-                    limit=limit,
-                    sort=search_sort,
-                    top_time=top_time,
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: (
+                    client.search_subreddit_posts(
+                        subreddit,
+                        query=results_query,
+                        after=after,
+                        limit=limit,
+                        sort=search_sort,
+                        top_time=top_time,
+                    )
                 )
             else:
-                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.load_subreddit(
-                    subreddit,
-                    sort=api_sort,
-                    after=after,
-                    limit=limit,
-                    top_time=top_time,
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: (
+                    client.load_subreddit(
+                        subreddit,
+                        sort=api_sort,
+                        after=after,
+                        limit=limit,
+                        top_time=top_time,
+                    )
                 )
 
-            posts, next_after, media_count, search_pages_fetched, search_limit_hit = collect_unique_posts(
-                fetch_page,
-                initial_after=after,
-                target_media_items=DISPLAY_MEDIA_ITEMS_PER_PAGE,
-                max_api_pages=max_api_pages,
+            posts, next_after, media_count, search_pages_fetched, search_limit_hit = (
+                collect_unique_posts(
+                    fetch_page,
+                    initial_after=after,
+                    target_media_items=DISPLAY_MEDIA_ITEMS_PER_PAGE,
+                    max_api_pages=max_api_pages,
+                )
             )
             subreddit_meta = client.load_subreddit_about(subreddit)
 
         if active_view == "user" and username:
             if results_query:
-                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.search_user_posts(
-                    username,
-                    query=results_query,
-                    after=after,
-                    limit=limit,
-                    sort=search_sort,
-                    top_time=top_time,
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: (
+                    client.search_user_posts(
+                        username,
+                        query=results_query,
+                        after=after,
+                        limit=limit,
+                        sort=search_sort,
+                        top_time=top_time,
+                    )
                 )
             else:
-                fetch_page = lambda after=None, limit=API_BATCH_SIZE: client.load_user_submitted(
-                    username,
-                    sort=api_sort,
-                    after=after,
-                    limit=limit,
-                    top_time=top_time,
+                fetch_page = lambda after=None, limit=API_BATCH_SIZE: (
+                    client.load_user_submitted(
+                        username,
+                        sort=api_sort,
+                        after=after,
+                        limit=limit,
+                        top_time=top_time,
+                    )
                 )
 
-            posts, next_after, media_count, search_pages_fetched, search_limit_hit = collect_unique_posts(
-                fetch_page,
-                initial_after=after,
-                target_media_items=DISPLAY_MEDIA_ITEMS_PER_PAGE,
-                max_api_pages=max_api_pages,
+            posts, next_after, media_count, search_pages_fetched, search_limit_hit = (
+                collect_unique_posts(
+                    fetch_page,
+                    initial_after=after,
+                    target_media_items=DISPLAY_MEDIA_ITEMS_PER_PAGE,
+                    max_api_pages=max_api_pages,
+                )
             )
             user_meta = client.load_user_about(username)
     except Exception as exc:
